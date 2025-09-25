@@ -1,117 +1,87 @@
-// HeroSection.tsx (Updated)
-"use client"
-import { ArrowRight } from "lucide-react";
-import { useState } from "react";
+"use client";
+import GlobeVisualization from "../home/GlobeVisualization"; // Adjust path
 
-interface HeroSectionProps {
-  onStartChat: (message: string) => void;
-}
-
-const HeroSection: React.FC<HeroSectionProps> = ({ onStartChat }) => {
-  const [text, setText] = useState("");
-  const wordCount = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
-  const charCount = text.length;
-
-  const handleSubmit = () => {
-    if (text.trim()) {
-      onStartChat(text.trim());
-    }
-  };
-
+const HeroSection: React.FC = () => {
   return (
-    <section className="min-h-screen relative flex items-center justify-center overflow-hidden py-12">
-      <div className="container mx-auto px-6 flex flex-col justify-center items-center gap-8 lg:gap-16">
-        <div className="px-6 py-2 -mb-20 border-[0.25px] border-cyan-200 rounded-2xl backdrop-blur-2xl">AI Powered Conversational Interface</div>
-        <h1 className="text-[10rem] font-bold -mb-20 text-white">FloatChat</h1>
-        <p className="text-sm text-gray-300 mt-6 -mb-8">
-          Want to know something about the oceanographic data?
-        </p>
+    <section className="relative flex items-center justify-center min-h-screen overflow-hidden py-12">
+      {/* Background Large Text */}
+      <h1 className="
+        absolute top-[20%] left-1/2 transform -translate-x-1/2
+        text-white/60 font-black tracking-wide 
+        text-[clamp(2rem,10vw,18rem)] leading-none 
+        select-none pointer-events-none z-0 px-12
+      ">
+        OCEANOGRAPHY
+      </h1>
 
-        <div className="relative w-full max-w-2xl group">
-          <div className="relative">
-            <textarea
-              className="w-full h-56 bg-[#010f1a] border border-cyan-500/30 rounded-xl resize-none outline-none p-6 text-white placeholder-cyan-200/60
-                        transition-all duration-500 focus:border-cyan-400 group-hover:border-cyan-400/60
-                        shadow-lg shadow-cyan-500/10 focus:shadow-cyan-400/30
-                        text-lg font-light pr-14"
-              placeholder="Ask anything about the oceanographic data.."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-            ></textarea>
+      {/* Foreground Content */}
+      <div className="container relative z-10 mx-auto px-6">
+        <div className="flex flex-col items-center justify-between lg:flex-row gap-10 w-full min-h-screen">
+          
+          {/* Left Section */}
+          <div className="lg:w-1/4 space-y-6 text-left mt-44">
+            <h2 className="text-2xl font-bold text-white">Ocean Data</h2>
+            <p className="text-md leading-relaxed text-gray-300">
+              Monitor real-time ocean conditions with AI-powered analysis.
+            </p>
 
-            {/* Word counter */}
-            <div className="absolute -bottom-7 left-0 text-xs text-cyan-300/70 transition-opacity duration-300 
-                           opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
-              {wordCount} words • {charCount} characters
+            {/* Example Progress Bars */}
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm text-gray-300 mb-1">
+                  <span>Temperature</span>
+                  <span className="text-cyan-400">24.5°C</span>
+                </div>
+                <div className="h-2 bg-gray-700/40 rounded-full">
+                  <div className="h-2 bg-gradient-to-r from-cyan-500 to-blue-400 rounded-full w-[82%]" />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-sm text-gray-300 mb-1">
+                  <span>Salinity</span>
+                  <span className="text-green-400">35.2 PSU</span>
+                </div>
+                <div className="h-2 bg-gray-700/40 rounded-full">
+                  <div className="h-2 bg-gradient-to-r from-green-500 to-emerald-400 rounded-full w-[68%]" />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-sm text-gray-300 mb-1">
+                  <span>Pressure</span>
+                  <span className="text-purple-400">1013 hPa</span>
+                </div>
+                <div className="h-2 bg-gray-700/40 rounded-full">
+                  <div className="h-2 bg-gradient-to-r from-purple-500 to-violet-400 rounded-full w-[75%]" />
+                </div>
+              </div>
             </div>
-
-            {/* Send button */}
-            <button 
-              onClick={handleSubmit}
-              disabled={!text.trim()}
-              className="absolute bottom-4 right-4 p-2 bg-cyan-500/10 border border-cyan-400/30 rounded-full 
-                         hover:bg-cyan-400/20 hover:border-cyan-400/50 transition-all duration-300
-                         group-hover:opacity-100 group-focus-within:opacity-100 opacity-70
-                         disabled:opacity-30 disabled:cursor-not-allowed
-                         shadow-lg shadow-cyan-400/20 hover:shadow-cyan-400/40"
-            >
-              <ArrowRight className="text-cyan-300 w-6 h-6" />
-
-              <div className="absolute inset-0 rounded-full bg-cyan-400/20 blur-md group-hover:bg-cyan-400/40 
-                             transition-all duration-300 opacity-0 group-hover:opacity-100"></div>
-            </button>
           </div>
 
-          {/* Enhanced glowing border effect */}
-          <div className="absolute -inset-2 rounded-xl bg-gradient-to-r from-cyan-400/30 via-cyan-400/60 to-cyan-400/30 
-                          opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-700 blur-lg z-[-1]"></div>
-          <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-cyan-400/20 via-cyan-400/40 to-cyan-400/20 
-                          opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-500 z-[-1]"></div>
-        </div>
+          {/* Center Globe */}
+          <div className="flex justify-center items-center lg:w-2/4">
+            <div className="relative w-[20rem] h-[20rem] md:w-[28rem] md:h-[28rem]">
+              <GlobeVisualization />
+            </div>
+          </div>
 
-        {/* Links Row */}
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <a
-            href="#statistics"
-            className="flex items-center gap-2 px-3 py-1 rounded-lg border border-cyan-300/30 text-cyan-200/80 
-               hover:text-cyan-100 hover:border-cyan-300 transition-all duration-300"
-          >
-            <span className="w-2 h-2 rounded-full bg-green-400"></span>
-            Know through Statistics
-          </a>
-
-          <a
-            href="#explore"
-            className="flex items-center gap-2 px-3 py-1 rounded-lg border border-cyan-300/30 text-cyan-200/80 
-               hover:text-cyan-100 hover:border-cyan-300 transition-all duration-300"
-          >
-            <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-            Explore ARGO Data
-          </a>
-
-          <a
-            href="#ai"
-            className="flex items-center gap-2 px-3 py-1 rounded-lg border border-cyan-300/30 text-cyan-200/80 
-               hover:text-cyan-100 hover:border-cyan-300 transition-all duration-300"
-          >
-            <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-            AI-Powered Insights
-          </a>
-
-          <a
-            href="#community"
-            className="flex items-center gap-2 px-3 py-1 rounded-lg border border-cyan-300/30 text-cyan-200/80 
-               hover:text-cyan-100 hover:border-cyan-300 transition-all duration-300"
-          >
-            <span className="w-2 h-2 rounded-full bg-pink-400"></span>
-            Join the Community
-          </a>
+          {/* Right Section */}
+          <div className="lg:w-1/4 space-y-8 text-right mt-44">
+            <h2 className="text-3xl font-bold text-white">Our Rate</h2>
+            <div>
+              <div className="text-4xl font-extrabold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                98%
+              </div>
+              <p className="text-gray-300">Accuracy Increase</p>
+            </div>
+            <div>
+              <div className="text-5xl font-extrabold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                300+
+              </div>
+              <p className="text-gray-300">Sensors Deployed</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>

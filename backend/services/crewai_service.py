@@ -1,11 +1,11 @@
-from dotenv import load_dotenv
-load_dotenv()
 import os
 import json
 import re
 import logging
 from datetime import datetime
 
+from dotenv import load_dotenv
+load_dotenv()
 from crewai import LLM,Agent,Task,Crew,TaskOutput
 from crewai_tools import SerperDevTool
 from crewai_tools import MCPServerAdapter

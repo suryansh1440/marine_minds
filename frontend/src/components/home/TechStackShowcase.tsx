@@ -172,7 +172,7 @@ const TechStackShowcase = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+          <h2 className="text-4xl md:text-5xl p-2 font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
             Technology Stack
           </h2>
           <p className="text-zinc-400 max-w-2xl mx-auto text-lg">
@@ -183,7 +183,7 @@ const TechStackShowcase = () => {
         {/* Tech Stack Grid */}
         <motion.div
           ref={constraintsRef}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6"
         >
           {techItems.map((item, index) => (
             <motion.div

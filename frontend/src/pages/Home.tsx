@@ -5,10 +5,11 @@ import React, { useState } from "react";
 import Navbar from "@/components/home/Navbar";
 import HeroSection from "@/components/home/HeroSection";
 import LightRays from "@/components/ui/LightRays";
-import HowItWorks from "@/components/home/HowItWorks";
+// import HowItWorks from "@/components/home/HowItWorks";
 import TechStackShowcase from "@/components/home/TechStackShowcase";
 import Footer from "@/components/home/Footer";
 import { useNavigate } from "react-router-dom";
+import TrySection from "@/components/home/TrySection";
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -41,11 +42,11 @@ const Home: React.FC = () => {
         
         {/* Updated HeroSection with chat handler */}
         <div className="relative z-20">
-          <HeroSection onStartChat={handleStartChat} />
+          <HeroSection/>
         </div>
         
         <div className="relative z-20">
-          <HowItWorks/>
+          <TrySection />
         </div>
         
         <div className="relative z-20">

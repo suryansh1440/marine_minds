@@ -33,7 +33,7 @@ const ChatInterface = () => {
     if (!text) return;
     dispatch(
       addMessage({
-        role: "user",
+      role: "user",
         message: text,
         timestamp: new Date().toISOString(),
       }) as any
@@ -73,16 +73,16 @@ const ChatInterface = () => {
             <div className="p-4 space-y-2">
               {/* Single current chat summary derived from store */}
               <div className="group relative p-3 rounded-lg cursor-pointer transition-all duration-300 bg-cyan-500/20 border border-cyan-400/30 shadow-lg shadow-cyan-500/10">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
                     <p className="text-white font-medium truncate text-sm">Current Chat</p>
                     <p className="text-slate-400 text-xs mt-1">{chats.length} messages</p>
-                  </div>
+                    </div>
                   <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all duration-200">
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                    </button>
+                  </div>
                 </div>
-              </div>
             </div>
           </div>
         </div>
@@ -178,7 +178,7 @@ const ChatInterface = () => {
                           {t.message}
                         </div>
                       ))}
-                    </div>
+                  </div>
                   )}
                 </div>
               </div>
