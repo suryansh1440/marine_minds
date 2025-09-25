@@ -30,16 +30,24 @@ llm = LLM(
 )
 
 def parse_llm_output(output_string: Any) -> Dict[str, Any]:
-    """Extract and parse JSON from an LLM output that may include code fences and pipes."""
+    """Extract and parse JSON from an LLM output that may include code fences, prefixes, and pipes."""
     text = str(output_string)
-    match = re.search(r'```json(.*?)```', text, re.DOTALL)
+
+    # Try fenced JSON first
+    match = re.search(r'```json(.*?)```', text, re.DOTALL | re.IGNORECASE)
     if match:
         json_content = match.group(1)
     else:
-        json_content = text
+        # Try to locate the first JSON object in the text
+        obj_match = re.search(r'(\{[\s\S]*\})', text)
+        json_content = obj_match.group(1) if obj_match else text
 
+    # Cleanup visual pipes and whitespace
     json_content = re.sub(r'│', '', json_content)
     json_content = re.sub(r'^\s+|\s+$', '', json_content, flags=re.MULTILINE)
+    # Fix common issues
+    json_content = re.sub(r',\s*}', '}', json_content)
+    json_content = re.sub(r',\s*]', ']', json_content)
     return json.loads(json_content)
 
 
@@ -47,6 +55,11 @@ def safe_parse_llm_output(output_string: Any) -> Dict[str, Any]:
     """Lenient parser with basic cleaning and fixes for trailing commas."""
     try:
         cleaned = str(output_string).replace('```json', '').replace('```', '').replace('│', '').strip()
+        # If cleaned is not a JSON object, extract first braces block
+        if not cleaned.strip().startswith('{'):
+            m = re.search(r'(\{[\s\S]*\})', cleaned)
+            if m:
+                cleaned = m.group(1)
         return json.loads(cleaned)
     except json.JSONDecodeError:
         cleaned = re.sub(r',\s*}', '}', cleaned)
@@ -390,10 +403,11 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         # Robustly parse router output
         route = 'LOOKUP'
         try:
+            raw_text = router_raw.raw
             try:
-                parsed_router = parse_llm_output(router_raw)
+                parsed_router = parse_llm_output(raw_text)
             except Exception:
-                parsed_router = safe_parse_llm_output(router_raw)
+                parsed_router = safe_parse_llm_output(raw_text)
             if isinstance(parsed_router, dict) and parsed_router.get('route') in ["CONVERSATION","LOOKUP","REPORT"]:
                 route = parsed_router['route']
         except Exception as _:

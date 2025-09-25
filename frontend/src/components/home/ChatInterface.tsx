@@ -2,33 +2,23 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowRight, Send, Plus, Trash2, Clock, User, Bot } from "lucide-react";
+import { Send, Plus, Trash2, User, Bot } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "@/store";
+import { addMessage, setSelectedMapData, setIsChatMapOpen } from "@/slices/chatSlice";
 import LightRays from "@/components/ui/LightRays";
-
-interface Message {
-  id: string;
-  content: string;
-  role: "user" | "assistant";
-  timestamp: Date;
-}
-
-interface Chat {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: Date;
-}
+import socketService from "@/services/socketService";
+import Analysis from "./Analysis";
 
 const ChatInterface = () => {
-  const [chats, setChats] = useState<Chat[]>([
+  const dispatch = useDispatch();
+  const chats = useSelector((state: RootState) => state.chat.chats);
+  const thoughts = useSelector((state: RootState) => state.chat.thoughts);
+  const queryType = useSelector((state: RootState) => state.chat.queryType);
+  const isResult = useSelector((state: RootState) => state.chat.isResult);
 
-  ]);
-  const [activeChatId, setActiveChatId] = useState("");
   const [inputMessage, setInputMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const activeChat = chats.find(chat => chat.id === activeChatId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,74 +26,21 @@ const ChatInterface = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [activeChat?.messages]);
+  }, [chats.length, thoughts.length, isResult]);
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !activeChat) return;
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      content: inputMessage,
+  const handleSendMessage = () => {
+    const text = inputMessage.trim();
+    if (!text) return;
+    dispatch(
+      addMessage({
       role: "user",
-      timestamp: new Date(),
-    };
-
-    // Update chat with user message
-    const updatedChats = chats.map(chat =>
-      chat.id === activeChatId
-        ? {
-            ...chat,
-            messages: [...chat.messages, newMessage],
-            title: chat.title === "New Chat" ? inputMessage.slice(0, 50) + (inputMessage.length > 50 ? "..." : "") : chat.title,
-          }
-        : chat
+        message: text,
+        timestamp: new Date().toISOString(),
+      }) as any
     );
-
-    setChats(updatedChats);
+    socketService.connect();
+    socketService.sendQuery(text);
     setInputMessage("");
-    setIsLoading(true);
-
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: `I understand you're asking about "${inputMessage}". As an AI specialized in ARGO oceanographic data, I can help you analyze temperature patterns, salinity data, or ocean currents. What specific aspect would you like to explore?`,
-        role: "assistant",
-        timestamp: new Date(),
-      };
-
-      const finalChats = updatedChats.map(chat =>
-        chat.id === activeChatId
-          ? { ...chat, messages: [...chat.messages, aiMessage] }
-          : chat
-      );
-
-      setChats(finalChats);
-      setIsLoading(false);
-    }, 2000);
-  };
-
-  const createNewChat = () => {
-    const newChatId = `chat-${Date.now()}`;
-    const newChat: Chat = {
-      id: newChatId,
-      title: "New Chat",
-      messages: [],
-      createdAt: new Date(),
-    };
-    setChats([newChat, ...chats]);
-    setActiveChatId(newChatId);
-  };
-
-  const deleteChat = (chatIdToDelete: string) => {
-    if (chats.length <= 1) return;
-    
-    const filteredChats = chats.filter(chat => chat.id !== chatIdToDelete);
-    setChats(filteredChats);
-    
-    if (chatIdToDelete === activeChatId) {
-      setActiveChatId(filteredChats[0]?.id || "");
-    }
   };
 
   return (
@@ -125,7 +62,6 @@ const ChatInterface = () => {
         <div className="w-80 bg-black/20 backdrop-blur-lg border-r border-cyan-500/20 flex flex-col">
           <div className="p-6 border-b border-cyan-500/20">
             <button
-              onClick={createNewChat}
               className="w-full flex items-center justify-center gap-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 rounded-xl px-4 py-3 text-cyan-300 transition-all duration-300 hover:scale-105"
             >
               <Plus className="w-5 h-5" />
@@ -135,37 +71,18 @@ const ChatInterface = () => {
 
           <div className="flex-1 overflow-y-auto">
             <div className="p-4 space-y-2">
-              {chats.map((chat) => (
-                <div
-                  key={chat.id}
-                  className={`group relative p-3 rounded-lg cursor-pointer transition-all duration-300 ${
-                    activeChatId === chat.id
-                      ? "bg-cyan-500/20 border border-cyan-400/30 shadow-lg shadow-cyan-500/10"
-                      : "bg-white/5 hover:bg-white/10 border border-transparent hover:border-cyan-400/20"
-                  }`}
-                  onClick={() => setActiveChatId(chat.id)}
-                >
+              {/* Single current chat summary derived from store */}
+              <div className="group relative p-3 rounded-lg cursor-pointer transition-all duration-300 bg-cyan-500/20 border border-cyan-400/30 shadow-lg shadow-cyan-500/10">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium truncate text-sm">
-                        {chat.title}
-                      </p>
-                      <p className="text-slate-400 text-xs mt-1">
-                        {chat.messages.length} messages
-                      </p>
+                    <p className="text-white font-medium truncate text-sm">Current Chat</p>
+                    <p className="text-slate-400 text-xs mt-1">{chats.length} messages</p>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteChat(chat.id);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all duration-200"
-                    >
+                  <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all duration-200">
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </button>
                   </div>
                 </div>
-              ))}
             </div>
           </div>
         </div>
@@ -180,7 +97,7 @@ const ChatInterface = () => {
 
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {activeChat?.messages.length === 0 ? (
+            {chats.length === 0 ? (
               <div className="flex items-center justify-center h-full text-cyan-300/60">
                 <div className="text-center">
                   <Bot className="w-16 h-16 mx-auto mb-4 text-cyan-400 opacity-50" />
@@ -189,33 +106,50 @@ const ChatInterface = () => {
                 </div>
               </div>
             ) : (
-              activeChat?.messages.map((message) => (
+              chats.map((chat) => (
                 <div
-                  key={message.id}
-                  className={`flex gap-4 ${
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  }`}
+                  key={chat.id}
+                  className={`flex gap-4 ${chat.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {message.role === "assistant" && (
+                  {chat.role !== 'user' && (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/20">
                       <Bot className="w-5 h-5 text-white" />
                     </div>
                   )}
-                  
                   <div
                     className={`max-w-2xl rounded-2xl p-4 backdrop-blur-sm ${
-                      message.role === "user"
-                        ? "bg-cyan-500/20 border border-cyan-400/30 rounded-br-none shadow-lg shadow-cyan-500/10"
-                        : "bg-white/5 border border-cyan-400/20 rounded-bl-none shadow-lg shadow-cyan-500/5"
+                      chat.role === 'user'
+                        ? 'bg-cyan-500/20 border border-cyan-400/30 rounded-br-none shadow-lg shadow-cyan-500/10'
+                        : 'bg-white/5 border border-cyan-400/20 rounded-bl-none shadow-lg shadow-cyan-500/5'
                     }`}
                   >
-                    <p className="text-white">{message.content}</p>
-                    <p className="text-xs text-cyan-300/60 mt-2">
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    {chat.role === 'user' ? (
+                      <p className="text-white">{(chat as any).message}</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {chat.report?.title && (
+                          <h3 className="text-lg font-semibold text-white">{chat.report.title}</h3>
+                        )}
+                        {chat.report?.content && (
+                          <p className="text-cyan-100/90 whitespace-pre-wrap">{chat.report.content}</p>
+                        )}
+                        {Array.isArray(chat.graphs) && chat.graphs.length > 0 && (
+                          <Analysis graphs={chat.graphs as any} />
+                        )}
+                        {Array.isArray(chat.maps) && chat.maps.length > 0 && (
+                          <div className="pt-1">
+                            <button
+                              className="inline-flex items-center gap-2 rounded-md bg-slate-900 text-white px-3 py-1.5 text-sm hover:bg-slate-700"
+                              onClick={() => { dispatch(setSelectedMapData({ chatId: chat.id })); dispatch(setIsChatMapOpen(true)); }}
+                            >
+                              View map
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {message.role === "user" && (
+                  {chat.role === 'user' && (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/20">
                       <User className="w-5 h-5 text-white" />
                     </div>
@@ -224,17 +158,28 @@ const ChatInterface = () => {
               ))
             )}
 
-            {isLoading && (
+            {!isResult && (
               <div className="flex gap-4 justify-start">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
-                <div className="bg-white/5 border border-cyan-400/20 rounded-2xl rounded-bl-none p-4 backdrop-blur-sm">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="bg-white/5 border border-cyan-400/20 rounded-2xl rounded-bl-none p-4 backdrop-blur-sm w-full max-w-2xl">
+                  {queryType && (
+                    <div className="mb-2">
+                      <span className="inline-block text-xs font-semibold px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                        {queryType}
+                      </span>
+                    </div>
+                  )}
+                  {Array.isArray(thoughts) && thoughts.length > 0 && (
+                    <div className="space-y-2">
+                      {thoughts.map((t) => (
+                        <div key={t.id} className="text-sm text-cyan-100/90 bg-white/5 border border-cyan-400/20 rounded-md px-3 py-2">
+                          {t.message}
+                        </div>
+                      ))}
                   </div>
+                  )}
                 </div>
               </div>
             )}
@@ -264,7 +209,7 @@ const ChatInterface = () => {
                 
                 <button
                   onClick={handleSendMessage}
-                  disabled={isLoading || !inputMessage.trim()}
+                  disabled={!inputMessage.trim()}
                   className="absolute bottom-3 right-3 p-2 bg-cyan-500/10 border border-cyan-400/30 rounded-full 
                            hover:bg-cyan-400/20 hover:border-cyan-400/50 transition-all duration-300
                            disabled:opacity-30 disabled:cursor-not-allowed
