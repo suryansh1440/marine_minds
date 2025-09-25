@@ -204,3 +204,43 @@
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* Additional styles for the ARGO map */
+.argo-map-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.argo-marker-popup .leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.argo-marker-popup .leaflet-popup-content {
+  margin: 12px;
+  line-height: 1.4;
+}
+
+.argo-marker-popup h3 {
+  color: #0066cc;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.argo-marker-popup p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.spinner {
+          width: 20px;
+          height: 20px;
+          border: 2px solid #f3f3f3;
+          border-top: 2px solid #0066cc;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }

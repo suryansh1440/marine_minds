@@ -3,12 +3,17 @@ from flask_cors import CORS
 from services.crewai_service import run_crewai_pipeline
 from socket_manager import socket_manager
 from netcdf_processor import process_netcdf
+from models import FloatMetadata, ProfileMetadata
+from sqlalchemy.orm import sessionmaker
+from config import engine
+from sqlalchemy import desc
 import os
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import traceback
 
 app = Flask(__name__)
+SessionLocal = sessionmaker(bind=engine)
 CORS(app, resources={r"/api/*": {"origins": [
     "http://localhost:5173", 
     "http://127.0.0.1:5173",
@@ -100,6 +105,55 @@ def upload_netcdf():
                 os.remove(file_location)
             except Exception as e:
                 app.logger.error(f"Error cleaning up file: {str(e)}")
+
+
+@app.route('/api/argo-positions')
+def get_argo_positions():
+    session = SessionLocal()
+    try:
+        # Get the latest position for each platform
+        subquery = session.query(
+            ProfileMetadata.platform_number,
+            func.max(ProfileMetadata.juld).label('latest_date')
+        ).filter(
+            ProfileMetadata.latitude.isnot(None),
+            ProfileMetadata.longitude.isnot(None)
+        ).group_by(ProfileMetadata.platform_number).subquery()
+
+        results = session.query(
+            FloatMetadata.platform_number,
+            ProfileMetadata.latitude,
+            ProfileMetadata.longitude,
+            ProfileMetadata.juld,
+            FloatMetadata.platform_type,
+            FloatMetadata.project_name,
+            FloatMetadata.data_centre
+        ).join(
+            ProfileMetadata, FloatMetadata.platform_number == ProfileMetadata.platform_number
+        ).join(
+            subquery,
+            (ProfileMetadata.platform_number == subquery.c.platform_number) &
+            (ProfileMetadata.juld == subquery.c.latest_date)
+        ).all()
+
+        positions = []
+        for result in results:
+            positions.append({
+                'platform_number': result.platform_number,
+                'latitude': float(result.latitude) if result.latitude else None,
+                'longitude': float(result.longitude) if result.longitude else None,
+                'last_profile_date': result.juld.isoformat() if result.juld else None,
+                'platform_type': result.platform_type,
+                'project_name': result.project_name,
+                'data_centre': result.data_centre
+            })
+
+        return jsonify({'argo_floats': positions})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()
 
 if __name__ == "__main__":
     socket_manager.run_app(app, host="0.0.0.0", port=9000, debug=False)
