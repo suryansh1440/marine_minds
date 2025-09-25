@@ -29,33 +29,29 @@ llm = LLM(
     api_key=os.getenv("GEMINI_API_KEY")  # Use the correct environment variable
 )
 
-# Robust JSON parsing for LLM outputs that may include code fences or minor format issues
-def parse_json_result(result_str: Any) -> Dict[str, Any]:
-    if not result_str:
-        return {}
+def parse_llm_output(output_string: Any) -> Dict[str, Any]:
+    """Extract and parse JSON from an LLM output that may include code fences and pipes."""
+    text = str(output_string)
+    match = re.search(r'```json(.*?)```', text, re.DOTALL)
+    if match:
+        json_content = match.group(1)
+    else:
+        json_content = text
 
-    text = str(result_str).strip()
+    json_content = re.sub(r'│', '', json_content)
+    json_content = re.sub(r'^\s+|\s+$', '', json_content, flags=re.MULTILINE)
+    return json.loads(json_content)
 
-    # Remove JSON code block markers
-    text = re.sub(r"^```json\s*|^```\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
 
-    # If it still doesn't start with {, try to find JSON object
-    if not text.startswith('{'):
-        json_match = re.search(r'(\{[\s\S]*\})', text)
-        if json_match:
-            text = json_match.group(1)
-
-    # Fix common JSON issues
-    text = text.replace("'", '"')
-    text = re.sub(r',\s*}', '}', text)  # Remove trailing commas
-    text = re.sub(r',\s*]', ']', text)  # Remove trailing commas in arrays
-
+def safe_parse_llm_output(output_string: Any) -> Dict[str, Any]:
+    """Lenient parser with basic cleaning and fixes for trailing commas."""
     try:
-        return json.loads(text)
-    except json.JSONDecodeError as e:
-        print(f"JSON parsing failed: {e}")
-        print(f"Problematic text: {text[:200]}...")
-        return {}
+        cleaned = str(output_string).replace('```json', '').replace('```', '').replace('│', '').strip()
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        cleaned = re.sub(r',\s*}', '}', cleaned)
+        cleaned = re.sub(r',\s*]', ']', cleaned)
+        return json.loads(cleaned)
 
 class MapLabel(BaseModel):
     lat: float
@@ -261,8 +257,15 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         )
         result_maker_lookup = Task(
             description=(
-                    "Return ONLY FinalOutputModel with a 2-3 sentences report summarizing fetched values. "
-                    "Unless the user explicitly asked for graphs/maps, set graphs=[] and maps=[]."
+                    "Return ONLY FinalOutputModel with a concise report summarizing fetched values. "
+                    "Rules (generic for any tabular result):\n"
+                    "- Detect shape of the result.\n"
+                    "  * Single column: title = column name or 'Results'; content: 'Found N items: v1, v2, v3, ...' (first 10).\n"
+                    "  * Two columns: title = '<col1> and <col2> Summary'; content: 'Rows: N. Sample: v11:v12, v21:v22, ...' (first 10 pairs).\n"
+                    "  * 3+ columns: title = 'Query Results'; content: 'Rows: N, Columns: M (c1, c2, ...). Sample: row1[c1=v, c2=v, ...]; row2[...]' (first 5 rows, compact).\n"
+                    "- If a known semantic fits (e.g., tables list), you may adapt title wording (e.g., 'Database Tables').\n"
+                    "- Always keep content plain text (no markdown, no code fences).\n"
+                    "- Unless explicitly requested, set graphs=[] and maps=[]."
             ),
             agent=lookup_data_retrieval,
             context=[lookup_database_query],
@@ -328,6 +331,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
                 "Generate ONLY the final JSON strictly matching FinalOutputModel. Use the context data to build:\n"
                 "- report.title and report.content (clear, non-generic and insightful).\n"
                 "- graphs: create a maximum of 1 graph relevant to the data. Choose from types like 'bar', 'line', 'scatter', 'area', or 'pie'.\n"
+                "  Graph data sampling rules: Ensure the 'data' array has between 5 and 20 points. If more than 20 points, uniformly sample down to exactly 20. If fewer than 5 points, omit the graph entirely.\n"
                 "  **CRITICAL: Each graph's 'data' array must contain actual data points, not empty objects. Each data point should be a dictionary with the xKey and yKey values.**\n"
                 "  For example: [{\"cycle\": 1, \"temp\": 23.1}, {\"cycle\": 2, \"temp\": 24.5}] for a line graph with xKey='cycle' and yKey='temp'.\n"
                 "  For example: [{\"station\": \"A\", \"pressure\": 1013}, {\"station\": \"B\", \"pressure\": 1015}] for a bar chart with xKey='station' and yKey='pressure'.\n"
@@ -386,7 +390,10 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         # Robustly parse router output
         route = 'LOOKUP'
         try:
-            parsed_router = parse_json_result(router_raw)
+            try:
+                parsed_router = parse_llm_output(router_raw)
+            except Exception:
+                parsed_router = safe_parse_llm_output(router_raw)
             if isinstance(parsed_router, dict) and parsed_router.get('route') in ["CONVERSATION","LOOKUP","REPORT"]:
                 route = parsed_router['route']
         except Exception as _:
@@ -424,7 +431,10 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             return {"error": "No result returned from crew"}
 
         if hasattr(result, 'raw') and result.raw:
-            parsed = parse_json_result(result.raw)
+            try:
+                parsed = parse_llm_output(result.raw)
+            except Exception:
+                parsed = safe_parse_llm_output(result.raw)
             if parsed:
                 return parsed
             return {"result": str(result.raw)}
@@ -432,7 +442,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             return {"result": str(result)}
 
 if __name__ == "__main__":
-    demo_query = "hii how are you today"
+    demo_query = "give me all station no and how many cycles are there in each station"
     try:
         output = run_crewai_pipeline(demo_query, verbose=True)
         print("\nFINAL RESULT:\n", json.dumps(output, indent=2))

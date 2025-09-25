@@ -1,23 +1,9 @@
-import { Routes, Route } from "react-router-dom";
-import Admin from "./pages/Admin";
-import Home from "./pages/Home";
+import {Outlet } from "react-router-dom";
 
 const App = () => {
   return (
     <div>
-      <Routes>
-        <Route path="/admin" element={<Admin />} />
-
-        {/* Wrap multiple components in a fragment or div */}
-        <Route
-          path="/"
-          element={
-            <>
-              <Home />
-            </>
-          }
-        />
-      </Routes>
+      <Outlet/>
     </div>
   );
 };
