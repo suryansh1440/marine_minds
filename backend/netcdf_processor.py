@@ -61,14 +61,28 @@ def get_embedding_model():
 
 def convert_julian_day(julian_day, reference_date="1950-01-01"):
     """Convert Julian day to datetime"""
-    if pd.isna(julian_day) or julian_day == 999999.0:
+    # Debug: print the raw value
+    print(f"Raw Julian day value: {julian_day}, type: {type(julian_day)}")
+    
+    # Check for common fill values
+    if pd.isna(julian_day) or julian_day in [999999.0, 99999.0, 999999, 99999, -999999.0, -99999.0]:
+        print(f"Filtered out Julian day (fill value): {julian_day}")
         return None
+    
     try:
         base_date = pd.Timestamp(reference_date)
-        return base_date + pd.Timedelta(days=julian_day)
-    except:
+        result = base_date + pd.Timedelta(days=float(julian_day))
+        print(f"Converted Julian day {julian_day} to {result}")
+        
+        # Verify the conversion makes sense
+        if result.year < 1990 or result.year > 2030:
+            print(f"WARNING: Converted date {result} seems unusual for Julian day {julian_day}")
+        
+        return result
+    except Exception as e:
+        print(f"Error converting Julian day {julian_day}: {e}")
         return None
-
+    
 def safe_decode(value):
     """Safely decode bytes to string or return original value"""
     if isinstance(value, bytes):
