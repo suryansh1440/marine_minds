@@ -2,13 +2,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Send, Plus, Trash2, User, Bot } from "lucide-react";
+import { Send, Plus, Trash2, User, Bot, Loader2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "@/store";
-import { addMessage, setSelectedMapData, setIsChatMapOpen } from "@/slices/chatSlice";
+import { addMessage, setSelectedMapData, setIsChatMapOpen, clearThoughts } from "@/slices/chatSlice";
 import LightRays from "@/components/ui/LightRays";
 import socketService from "@/services/socketService";
 import Analysis from "./Analysis";
+import TypewriterThoughts from "@/components/ui/TypewriterThoughts";
 
 const ChatInterface = () => {
   const dispatch = useDispatch();
@@ -19,18 +20,50 @@ const ChatInterface = () => {
 
   const [inputMessage, setInputMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (force = false) => {
+    if (messagesEndRef.current && (!isScrolling || force)) {
+      setIsScrolling(true);
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      // Reset scrolling flag after animation
+      setTimeout(() => setIsScrolling(false), 500);
+    }
   };
 
+  // Auto-scroll when new messages arrive
   useEffect(() => {
     scrollToBottom();
-  }, [chats.length, thoughts.length, isResult]);
+  }, [chats.length, isResult]);
+
+  // Auto-scroll when thoughts are being written (more frequent)
+  useEffect(() => {
+    if (thoughts.length > 0 && !isResult) {
+      // Scroll immediately when new thoughts arrive
+      scrollToBottom(true);
+      
+      // Set up interval to scroll during typewriter animation
+      const interval = setInterval(() => {
+        if (!isResult && thoughts.length > 0) {
+          scrollToBottom();
+        }
+      }, 100); // Check every 100ms during animation
+
+      return () => clearInterval(interval);
+    }
+  }, [thoughts.length, isResult]);
+
+  // Auto-scroll when query type changes (shows loader)
+  useEffect(() => {
+    if (queryType) {
+      scrollToBottom();
+    }
+  }, [queryType]);
 
   const handleSendMessage = () => {
     const text = inputMessage.trim();
     if (!text) return;
+    dispatch(clearThoughts());
     dispatch(
       addMessage({
       role: "user",
@@ -41,6 +74,9 @@ const ChatInterface = () => {
     socketService.connect();
     socketService.sendQuery(text);
     setInputMessage("");
+    
+    // Scroll immediately when user sends message
+    setTimeout(() => scrollToBottom(true), 100);
   };
 
   return (
@@ -120,7 +156,9 @@ const ChatInterface = () => {
                     className={`max-w-2xl rounded-2xl p-4 backdrop-blur-sm ${
                       chat.role === 'user'
                         ? 'bg-cyan-500/20 border border-cyan-400/30 rounded-br-none shadow-lg shadow-cyan-500/10'
-                        : 'bg-white/5 border border-cyan-400/20 rounded-bl-none shadow-lg shadow-cyan-500/5'
+                        : chat.report?.title === 'Error'
+                          ? 'bg-red-900/20 border border-red-500/40 rounded-bl-none shadow-lg shadow-red-600/20'
+                          : 'bg-white/5 border border-cyan-400/20 rounded-bl-none shadow-lg shadow-cyan-500/5'
                     }`}
                   >
                     {chat.role === 'user' ? (
@@ -158,29 +196,27 @@ const ChatInterface = () => {
               ))
             )}
 
+            {/* Hide live thoughts when a result or error arrived */}
             {!isResult && (
-              <div className="flex gap-4 justify-start">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                  <Bot className="w-5 h-5 text-white" />
-                </div>
-                <div className="bg-white/5 border border-cyan-400/20 rounded-2xl rounded-bl-none p-4 backdrop-blur-sm w-full max-w-2xl">
-                  {queryType && (
-                    <div className="mb-2">
+              <div>
+                {queryType && (
+                  <div className="flex gap-4 justify-start mb-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                      <Bot className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="bg-white/5 border border-cyan-400/20 rounded-2xl rounded-bl-none p-4 backdrop-blur-sm flex items-center gap-3">
                       <span className="inline-block text-xs font-semibold px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200">
                         {queryType}
                       </span>
+                      <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
                     </div>
-                  )}
-                  {Array.isArray(thoughts) && thoughts.length > 0 && (
-                    <div className="space-y-2">
-                      {thoughts.map((t) => (
-                        <div key={t.id} className="text-sm text-cyan-100/90 bg-white/5 border border-cyan-400/20 rounded-md px-3 py-2">
-                          {t.message}
-                        </div>
-                      ))}
                   </div>
-                  )}
-                </div>
+                )}
+                <TypewriterThoughts 
+                  thoughts={thoughts} 
+                  isVisible={!isResult} 
+                  onContentChange={() => scrollToBottom()}
+                />
               </div>
             )}
             <div ref={messagesEndRef} />

@@ -111,10 +111,10 @@ const ChatMap = () => {
         labelLat= "lat"
         labelLng= "lng"
         labelColor= "color"
-        labelSize= "size"
-        labelAltitude= "altitude"
+        labelSize= {2}
+        labelAltitude= {0}
         labelIncludeDot={true}
-        labelDotRadius={2}
+        labelDotRadius={1}
         labelDotOrientation= "bottom"
         labelResolution={10}
 
