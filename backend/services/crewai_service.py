@@ -24,10 +24,15 @@ except ImportError:
 
 # Configure LLM for Gemini
 llm = LLM(
-    model="gemini/gemini-2.0-flash",
+    model="deepseek/deepseek-chat",
     temperature=0.1,
-    api_key=os.getenv("GEMINI_API_KEY")  # Use the correct environment variable
+    api_key="sk-e226bae36f4d43a2aa3c86d9fce835d8"
 )
+# llm = LLM(
+#     model="gemini/gemini-2.0-flash",
+#     temperature=0.1,
+#     api_key=os.getenv("GEMINI_API_KEY")  # Use the correct environment variable
+# )
 
 def parse_llm_output(output_string: Any) -> Dict[str, Any]:
     """Extract and parse JSON from an LLM output that may include code fences, prefixes, and pipes."""
@@ -292,7 +297,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
 
         # Report-only agents and tasks (heavy analysis)
         data_analyst = Agent(
-            role="Data Analysis & Report Generation Specialist",
+            role="Data Analysis Agent",
             goal=(
                 "Understand the user's query, determine needed variables, station/region and time scope; "
                 "fetch required datasets via available tools (including geolocations from DB); "
@@ -301,9 +306,11 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             backstory="""You are a data scientist who can interpret the user's intent, decide what to query,
             use available tools to fetch exactly what's needed, aggregate by cycle/station/month as appropriate,
             and then create compelling reports with meaningful graphs and map layers in the required schema.""",
-        tools=[*tools],
+            tools=[*tools],
             verbose=True,
             llm=llm
+            # max_iter=1,  # Only 1 iteration to prevent loops
+            # max_execution_time=30  # 30 second timeout
         )
 
         result_agent = Agent(
@@ -314,22 +321,19 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
                         You understand which chart and map types best represent the data to tell a compelling story.""",
             verbose=True,
             llm=llm
+            # max_iter=2,  # Limit iterations to prevent infinite loops
+            # max_execution_time=30  # 30 second timeout
         )
 
 
         # Single task where data_analyst interprets the query and fetches data
         analysis_and_fetch = Task(
             description=(
-                "For the query: '{query}', perform ALL of the following:\n"
-                "first get the database schema then get the count of row you want to fetch from the database"
-                "then if data is more than 200 rows then fetch only 200 rows by using the avg and get average the data if its is meaniningfull."
-                "if ask about cycles then fetch data according to the cycle of a specific platform number dont use the avg in this"
-                "if ask about platform number then fetch data according to the avg cycles data of that station"
-                "if ask about region then get the region lat,log then fetch meserments data according to it in avg."
-                "if ask about date then fetch according to the avg stations data"
-                "1) Interpret intent: extract station/platform number/cycles etc, if present; identify requested variables (e.g., temp, psal); time scope; and whether maps are needed.\n"
-                "2) Use DB tools to retrieve required data. Prefer aggregated data averages for queries. Include lat/lng for map labels when relevant.\n"
-                "3) Produce a concise, structured summary of fetched results suitable for rendering graphs and maps (no markdown)."
+                "For the query: '{query}', perform these steps ONCE:\n"
+                "1) Get database schema\n"
+                "2) Execute ONE SQL query to get the data (use AVG for aggregation if needed)\n"
+                "3) Return the results in a structured format\n"
+                "STOP after getting the data. Do not repeat steps or loop."
             ),
             agent=data_analyst,
             tools=[*tools],
@@ -342,6 +346,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         result_maker = Task(
             description=(
                 "Generate ONLY the final JSON strictly matching FinalOutputModel. Use the context data to build:\n"
+                "Build the report ,map and graphs beased on this query - {query}"
                 "- report.title and report.content (clear, non-generic and insightful).\n"
                 "- graphs: create a maximum of 1 graph relevant to the data. Choose from types like 'bar', 'line', 'scatter', 'area', or 'pie'.\n"
                 "  Graph data sampling rules: Ensure the 'data' array has between 5 and 20 points. If more than 20 points, uniformly sample down to exactly 20. If fewer than 5 points, omit the graph entirely.\n"
@@ -358,7 +363,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             agent=result_agent,
             context=[analysis_and_fetch],
             output_json=FinalOutputModel,
-            expected_output="A single JSON object formatted as per FinalOutputModel with a high-quality narrative, graphs, and maps",
+            expected_output="A single JSON object formatted as per FinalOutputModel with a high-quality narrative, graphs, and maps according to this query : {query}",
             callback=create_callback_function_report(session_id)
         )
 
@@ -384,12 +389,13 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         )
         report_crew = Crew(
             agents=[data_analyst,result_agent],
-        tasks=[
+            tasks=[
                 analysis_and_fetch,
-            result_maker
-        ],
+                result_maker
+            ],
             process="sequential",
-            # max_execution_time=120,
+            # max_iter=1,  # Only 1 iteration to prevent loops
+            # max_execution_time=60,  # 60 second timeout
             verbose=True
         )
 
@@ -403,14 +409,19 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         # Robustly parse router output
         route = 'LOOKUP'
         try:
-            raw_text = router_raw.raw
-            try:
-                parsed_router = parse_llm_output(raw_text)
-            except Exception:
-                parsed_router = safe_parse_llm_output(raw_text)
-            if isinstance(parsed_router, dict) and parsed_router.get('route') in ["CONVERSATION","LOOKUP","REPORT"]:
-                route = parsed_router['route']
-        except Exception as _:
+            raw_text = getattr(router_raw, 'raw', router_raw)  # Safe access
+            if not raw_text or not str(raw_text).strip():
+                print("Router returned empty output, falling back to LOOKUP")
+                route = 'LOOKUP'
+            else:
+                try:
+                    parsed_router = parse_llm_output(raw_text)
+                except Exception:
+                    parsed_router = safe_parse_llm_output(raw_text)
+                if isinstance(parsed_router, dict) and parsed_router.get('route') in ["CONVERSATION","LOOKUP","REPORT"]:
+                    route = parsed_router['route']
+        except Exception as e:
+            print(f"Error parsing router output: {e}, falling back to LOOKUP")
             pass
         print(f"Router selected route: {route}")
 
@@ -429,9 +440,12 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             try:
                 result = report_crew.kickoff(input_data)
             except Exception as exc:
+                error_msg = str(exc)
+                if "timeout" in error_msg.lower() or "max_execution_time" in error_msg.lower():
+                    error_msg = "Analysis timed out. Please try a simpler query or break it into smaller parts."
                 if SOCKET_AVAILABLE and socket_manager and session_id:
-                    socket_manager.emit_error(session_id, f'Analysis failed: {str(exc)}')
-                return {"error": str(exc)}
+                    socket_manager.emit_error(session_id, f'Analysis failed: {error_msg}')
+                return {"error": error_msg}
         else:
             # Fallback to LOOKUP if unknown
             if SOCKET_AVAILABLE and socket_manager and session_id:
@@ -444,16 +458,19 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
                 socket_manager.emit_error(session_id, 'Analysis failed: No result returned')
             return {"error": "No result returned from crew"}
 
-        if hasattr(result, 'raw') and result.raw:
-            try:
-                parsed = parse_llm_output(result.raw)
-            except Exception:
-                parsed = safe_parse_llm_output(result.raw)
-            if parsed:
-                return parsed
-            return {"result": str(result.raw)}
-        else:
-            return {"result": str(result)}
+        raw_result_text = getattr(result, 'raw', result)  # Safe access
+        if not raw_result_text or not str(raw_result_text).strip():
+            if SOCKET_AVAILABLE and socket_manager and session_id:
+                socket_manager.emit_error(session_id, 'Analysis failed: Invalid response from LLM call - None or empty.')
+            return {"error": "Invalid response from LLM call - None or empty."}
+
+        try:
+            parsed = parse_llm_output(raw_result_text)
+        except Exception:
+            parsed = safe_parse_llm_output(raw_result_text)
+        if parsed:
+            return parsed
+        return {"result": str(raw_result_text)}
 
 if __name__ == "__main__":
     demo_query = "give me all station no and how many cycles are there in each station"

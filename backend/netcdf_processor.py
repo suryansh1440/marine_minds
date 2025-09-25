@@ -267,6 +267,7 @@ def process_netcdf(file_path):
             cycle_number = int(ds.CYCLE_NUMBER.values[i]) if safe_float(ds.CYCLE_NUMBER.values[i]) is not None else None
             
             # Process profile metadata
+            print(f"Processing profile {i}: JULD={ds.JULD.values[i]}, JULD_LOCATION={ds.JULD_LOCATION.values[i]}")
             juld = convert_julian_day(ds.JULD.values[i], ref_date)
             juld_location = convert_julian_day(ds.JULD_LOCATION.values[i], ref_date)
             
@@ -276,6 +277,16 @@ def process_netcdf(file_path):
                 param = safe_decode(ds.STATION_PARAMETERS.values[i, j])
                 if param and param != '':
                     station_params.append(param)
+            
+            # Check if profile already exists
+            existing_profile = session.query(ProfileMetadata).filter_by(
+                platform_number=platform,
+                cycle_number=cycle_number
+            ).first()
+            
+            if existing_profile:
+                print(f"Profile {platform}-{cycle_number} already exists, skipping...")
+                continue
             
             profile_meta = ProfileMetadata(
                 platform_number=platform,
