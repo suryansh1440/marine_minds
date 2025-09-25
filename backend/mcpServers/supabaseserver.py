@@ -9,13 +9,15 @@ import re
 from fastmcp import FastMCP
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
-
-SUPABASE_DB_USER = "postgres.hbfmvzzjbvqzmwpxnrcb"
-SUPABASE_DB_PASSWORD = "Suryansh@1440"
-SUPABASE_DB_HOST = "aws-1-ap-south-1.pooler.supabase.com"
-SUPABASE_DB_PORT = 6543
-SUPABASE_DB_NAME = "postgres"
+SUPABASE_DB_USER = os.getenv("user")
+SUPABASE_DB_PASSWORD = os.getenv("password")
+SUPABASE_DB_HOST = os.getenv("host")
+SUPABASE_DB_PORT = os.getenv("port")
+SUPABASE_DB_NAME = os.getenv("dbname")
 SUPABASE_SSLMODE = "require"
 
 def _get_connection_params() -> dict:
