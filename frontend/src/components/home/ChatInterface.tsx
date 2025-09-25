@@ -19,23 +19,11 @@ interface Chat {
   createdAt: Date;
 }
 
-const ChatInterface = ({ initialMessage, chatId }: { initialMessage?: string; chatId: string }) => {
+const ChatInterface = () => {
   const [chats, setChats] = useState<Chat[]>([
-    {
-      id: chatId,
-      title: initialMessage?.slice(0, 50) + (initialMessage && initialMessage.length > 50 ? "..." : "") || "New Chat",
-      messages: initialMessage ? [
-        {
-          id: "1",
-          content: initialMessage,
-          role: "user",
-          timestamp: new Date(),
-        }
-      ] : [],
-      createdAt: new Date(),
-    },
+
   ]);
-  const [activeChatId, setActiveChatId] = useState(chatId);
+  const [activeChatId, setActiveChatId] = useState("");
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
