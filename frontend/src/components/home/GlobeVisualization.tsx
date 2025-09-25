@@ -16,6 +16,8 @@ interface ArcData {
   startLng: number;
   endLat: number;
   endLng: number;
+  time: number;
+  color: string[];
 }
 
 interface SatelliteData {
@@ -32,6 +34,10 @@ const GlobeVisualization: React.FC = () => {
   const [landPolygons, setLandPolygons] = useState<any[]>([]);
   const [satellite, setSatellite] = useState<SatelliteData>({ lat: 0, lng: 0, altitude: 0.5 });
   const animationRef = useRef<number | null>(null);
+
+  // Arc configuration constants from the second code
+  const min = 1000;
+  const max = 4000;
 
   // Predefined ocean coordinates for Argo floats
   const oceanCoordinates = [
@@ -94,17 +100,21 @@ const GlobeVisualization: React.FC = () => {
 
     setArgoDevices(floats);
 
-    // Create arcs between floats
+    // Create arcs between floats using the arc properties from the second code
     const arcs: ArcData[] = [];
     for (let i = 0; i < 40; i++) {
       const source = floats[Math.floor(Math.random() * floats.length)];
       const target = floats[Math.floor(Math.random() * floats.length)];
+      const randTime = Math.floor(Math.random() * (max - min + 1) + min);
+      
       if (source !== target) {
         arcs.push({
           startLat: source.lat,
           startLng: source.lng,
           endLat: target.lat,
           endLng: target.lng,
+          time: randTime,
+          color: ['#ffffff00', '#faf7e6', '#ffffff00'], // From second code
         });
       }
     }
@@ -128,16 +138,20 @@ const GlobeVisualization: React.FC = () => {
         altitude: 0.4 + Math.sin(angle * 0.5) * 0.1 // Varying altitude
       });
 
-      // Create arcs from satellite to random Argo floats
+      // Create arcs from satellite to random Argo floats using the same arc properties
       if (argoDevices.length > 0) {
         const satelliteArcs: ArcData[] = [];
         for (let i = 0; i < 8; i++) { // Connect to 8 random floats
           const randomFloat = argoDevices[Math.floor(Math.random() * argoDevices.length)];
+          const randTime = Math.floor(Math.random() * (max - min + 1) + min);
+          
           satelliteArcs.push({
             startLat: satLat,
             startLng: satLng,
             endLat: randomFloat.lat,
             endLng: randomFloat.lng,
+            time: randTime,
+            color: ['#ffffff00', '#faf7e6', '#ffffff00'], // From second code
           });
         }
         setSatelliteArcsData(satelliteArcs);
@@ -177,11 +191,11 @@ const GlobeVisualization: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-full pointer-events-none">
+    <div className="relative w-full h-full pointer-events-none flex items-center justify-center">
       <Globe
         ref={globeRef}
         // High-resolution realistic Earth texture
-        globeImageUrl="https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+        globeImageUrl="https://unpkg.com/three-globe/example/img/earth-night.jpg"
         // Realistic bump map for terrain
         bumpImageUrl="https://unpkg.com/three-globe/example/img/earth-topology.png"
         
@@ -204,27 +218,21 @@ const GlobeVisualization: React.FC = () => {
         pointColor={(d: any) => d === satellite ? "#ff4444" : "#00a8ff"}
         pointRadius={(d: any) => d === satellite ? 0.2 : 0.08}
         pointResolution={24}
-
-        // Float-to-float connections - more subtle blue signals
         arcsData={arcsData}
-        arcColor={() => ["rgba(0, 200, 255, 0.4)", "rgba(0, 150, 255, 0.3)", "rgba(0, 100, 255, 0.2)"]}
-        arcAltitude={() => 0.1 + Math.random() * 0.05}
-        arcStroke={() => Math.random() * 0.3 + 0.1}
-        arcDashLength={0.3}
-        arcDashGap={0.1}
-        arcDashAnimateTime={() => 3000 + Math.random() * 2000}
-        arcDashInitialGap={() => Math.random() * 2}
+        arcColor="color" 
+        arcAltitudeAutoScale={0.3} 
+        arcStroke={0.5} 
+        arcDashGap={2} 
+        arcDashAnimateTime="time" 
+        arcStroke={0.5}
+        arcDashGap={2} 
+        arcDashAnimateTime="time" 
 
-        // Satellite-to-float connections - golden signals
-        ringsData={satelliteArcsData}
-        ringColor={() => ["rgba(255, 215, 0, 0.6)", "rgba(255, 165, 0, 0.4)", "rgba(255, 140, 0, 0.2)"]}
-        ringMaxRadius={() => 1.0}
-        ringPropagationSpeed={() => 1.2}
-        ringRepeatPeriod={() => 1500}
+        // Center the globe properly
+        width={800}
+        height={800}
+        globeOffset={[0, 30]} // Centered position
 
-        // Globe settings - transparent and fixed size
-        width={600}
-        height={600}
         backgroundColor="rgba(0, 0, 0, 0)"
         enablePointerInteraction={false} // Disable all interactions
 

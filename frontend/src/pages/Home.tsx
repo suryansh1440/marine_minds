@@ -52,7 +52,6 @@ const Home: React.FC = () => {
         <div className="relative z-20">
           <TechStackShowcase/>
         </div>
-        
         <div className="relative z-20">
           <Footer/>
         </div>
