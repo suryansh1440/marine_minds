@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import Globe from "react-globe.gl";
 import type { GlobeMethods } from "react-globe.gl";
+import * as THREE from 'three';
 
 interface ArgoDevice {
   lat: number;
@@ -59,24 +60,6 @@ const GlobeVisualization: React.FC = () => {
     { lat: 75.0, lng: 0.0 }, { lat: 78.0, lng: 45.0 }, { lat: 80.0, lng: 90.0 },
     { lat: 77.0, lng: 135.0 }, { lat: 79.0, lng: 180.0 }, { lat: 76.0, lng: -135.0 },
     { lat: 81.0, lng: -90.0 }, { lat: 74.0, lng: -45.0 },
-
-    // Additional scattered ocean points
-    { lat: 40.0, lng: 10.0 }, { lat: -15.0, lng: 25.0 }, { lat: 30.0, lng: 120.0 },
-    { lat: -45.0, lng: 165.0 }, { lat: 12.0, lng: -80.0 }, { lat: -8.0, lng: -35.0 },
-    { lat: 28.0, lng: -65.0 }, { lat: -32.0, lng: 25.0 }, { lat: 18.0, lng: 155.0 },
-    { lat: -18.0, lng: -125.0 }, { lat: 42.0, lng: -145.0 }, { lat: -42.0, lng: 145.0 },
-    { lat: 8.0, lng: 95.0 }, { lat: -28.0, lng: 115.0 }, { lat: 22.0, lng: -45.0 },
-    { lat: -12.0, lng: 55.0 }, { lat: 38.0, lng: -155.0 }, { lat: -38.0, lng: 175.0 },
-    { lat: 14.0, lng: -110.0 }, { lat: -14.0, lng: 70.0 }, { lat: 26.0, lng: -75.0 },
-    { lat: -26.0, lng: 95.0 }, { lat: 48.0, lng: -140.0 }, { lat: -48.0, lng: 140.0 },
-    { lat: 6.0, lng: 45.0 }, { lat: -6.0, lng: -155.0 }, { lat: 32.0, lng: -125.0 },
-    { lat: -32.0, lng: 125.0 }, { lat: 16.0, lng: 85.0 }, { lat: -16.0, lng: -85.0 },
-    { lat: 44.0, lng: -165.0 }, { lat: -44.0, lng: 165.0 }, { lat: 2.0, lng: 15.0 },
-    { lat: -2.0, lng: -175.0 }, { lat: 36.0, lng: -115.0 }, { lat: -36.0, lng: 115.0 },
-    { lat: 24.0, lng: 105.0 }, { lat: -24.0, lng: -105.0 }, { lat: 52.0, lng: -175.0 },
-    { lat: -52.0, lng: 5.0 }, { lat: 4.0, lng: 125.0 }, { lat: -4.0, lng: -125.0 },
-    { lat: 34.0, lng: -85.0 }, { lat: -34.0, lng: 85.0 }, { lat: 46.0, lng: -25.0 },
-    { lat: -46.0, lng: 25.0 }, { lat: 19.0, lng: 35.0 }, { lat: -19.0, lng: -35.0 }
   ];
 
   // Load land polygons for borders
@@ -179,90 +162,95 @@ const GlobeVisualization: React.FC = () => {
     };
   }, [argoDevices]);
 
+  // Set initial view and disable zoom
   useEffect(() => {
     if (globeRef.current) {
-      globeRef.current.pointOfView({ lat: 0, lng: 0, altitude: 2 }, 2000);
+      // Set fixed view with no zoom capability
+      globeRef.current.pointOfView({ lat: 0, lng: 0, altitude: 1.8 }, 0);
+      
+      // Disable zoom interactions
+      const globeElement = globeRef.current as any;
+      if (globeElement && globeElement.controls) {
+        globeElement.controls.enableZoom = false;
+      }
     }
   }, []);
 
   return (
-    <div className="relative">
+    <div className="relative w-full h-full pointer-events-none">
       <Globe
         ref={globeRef}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-
-        // Land borders
+        // High-resolution realistic Earth texture
+        globeImageUrl="https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+        // Realistic bump map for terrain
+        bumpImageUrl="https://unpkg.com/three-globe/example/img/earth-topology.png"
+        
+        // Atmosphere effect - reduced for transparency
+        atmosphereColor="rgba(100, 150, 255, 0.2)"
+        atmosphereAltitude={0.15}
+        
+        // Land borders - more subtle and realistic
         polygonsData={landPolygons}
-        polygonCapColor={() => "rgba(0,0,0,0)"}
-        polygonSideColor={() => "rgba(0,100,255,0.3)"}
-        polygonStrokeColor={() => "rgba(0,200,255,0.8)"}
-        polygonAltitude={0.003}
+        polygonCapColor={() => "rgba(40, 40, 40, 0.05)"}
+        polygonSideColor={() => "rgba(0, 0, 0, 0)"}
+        polygonStrokeColor={() => "rgba(50, 100, 150, 0.2)"}
+        polygonAltitude={0.001}
 
-        // Argo floats
+        // Argo floats - more subtle points
         pointsData={[...argoDevices, satellite]}
         pointLat={(d: any) => d.lat}
         pointLng={(d: any) => d.lng}
         pointAltitude={(d: any) => d.altitude}
-        pointColor={(d: any) => d === satellite ? "red" : "orange"}
-        pointRadius={(d: any) => d === satellite ? 0.4 : 0.2}
+        pointColor={(d: any) => d === satellite ? "#ff4444" : "#00a8ff"}
+        pointRadius={(d: any) => d === satellite ? 0.2 : 0.08}
+        pointResolution={24}
 
-        // Float-to-float connections
+        // Float-to-float connections - more subtle blue signals
         arcsData={arcsData}
-        arcColor={() => ["cyan", "deepskyblue", "white"]}
-        arcAltitude={() => 0.15 + Math.random() * 0.1}
-        arcStroke={() => Math.random() * 0.8 + 0.3}
-        arcDashLength={0.4}
-        arcDashGap={0.2}
-        arcDashAnimateTime={() => 2000 + Math.random() * 2000}
+        arcColor={() => ["rgba(0, 200, 255, 0.4)", "rgba(0, 150, 255, 0.3)", "rgba(0, 100, 255, 0.2)"]}
+        arcAltitude={() => 0.1 + Math.random() * 0.05}
+        arcStroke={() => Math.random() * 0.3 + 0.1}
+        arcDashLength={0.3}
+        arcDashGap={0.1}
+        arcDashAnimateTime={() => 3000 + Math.random() * 2000}
+        arcDashInitialGap={() => Math.random() * 2}
 
-        // Satellite-to-float connections
+        // Satellite-to-float connections - golden signals
         ringsData={satelliteArcsData}
-        ringColor={() => ["yellow", "gold", "orange"]}
-        ringMaxRadius={() => 0.8}
-        ringPropagationSpeed={() => 2}
-        ringRepeatPeriod={() => 1000}
+        ringColor={() => ["rgba(255, 215, 0, 0.6)", "rgba(255, 165, 0, 0.4)", "rgba(255, 140, 0, 0.2)"]}
+        ringMaxRadius={() => 1.0}
+        ringPropagationSpeed={() => 1.2}
+        ringRepeatPeriod={() => 1500}
 
-        width={900}
-        height={900}
-        backgroundColor="rgba(0,0,0,0)"
-        enablePointerInteraction={true}
+        // Globe settings - transparent and fixed size
+        width={600}
+        height={600}
+        backgroundColor="rgba(0, 0, 0, 0)"
+        enablePointerInteraction={false} // Disable all interactions
 
-        // Restrict zooming by setting minZoom and maxZoom to the same value
-        minZoom={2}
-        maxZoom={2}
+        // Lighting for more realistic appearance
+        onGlobeReady={() => {
+          if (globeRef.current) {
+            const globe = globeRef.current;
+            globe.scene().children.forEach(obj => {
+              if (obj.type === 'Scene') {
+                // Add ambient light for soft overall illumination
+                const ambientLight = new THREE.AmbientLight(0x333333, 0.4);
+                obj.add(ambientLight);
+
+                // Add directional light for sun-like illumination
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+                directionalLight.position.set(100, 10, 50);
+                obj.add(directionalLight);
+              }
+            });
+          }
+        }}
+
+        // Disable zoom completely
+        minZoom={1.8}
+        maxZoom={1.8}
       />
-      <div className="mt-8 flex flex-wrap gap-4 justify-center text-sm">
-      <a
-        href="#about-argo"
-        className="flex items-center gap-2 px-4 py-2 rounded-xl border border-cyan-300/30 text-cyan-200/80 
-                   hover:text-cyan-100 hover:border-cyan-300 transition-all duration-300
-                   backdrop-blur-md bg-white/5 shadow-md shadow-cyan-500/10"
-      >
-        <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-        Know about Argo
-      </a>
-
-      <a
-        href="#how-it-works"
-        className="flex items-center gap-2 px-4 py-2 rounded-xl border border-cyan-300/30 text-cyan-200/80 
-                   hover:text-cyan-100 hover:border-cyan-300 transition-all duration-300
-                   backdrop-blur-md bg-white/5 shadow-md shadow-cyan-500/10"
-      >
-        <span className="w-2 h-2 rounded-full bg-green-400"></span>
-        How Argo Works
-      </a>
-
-      <a
-        href="#data-storage"
-        className="flex items-center gap-2 px-4 py-2 rounded-xl border border-cyan-300/30 text-cyan-200/80 
-                   hover:text-cyan-100 hover:border-cyan-300 transition-all duration-300
-                   backdrop-blur-md bg-white/5 shadow-md shadow-cyan-500/10"
-      >
-        <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-        How Argo Stores Data
-      </a>
-    </div>
     </div>
   );
 };

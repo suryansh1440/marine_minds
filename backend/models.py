@@ -1,5 +1,5 @@
 from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Boolean, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Boolean, Text, ForeignKey, ForeignKeyConstraint, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 
 Base = declarative_base()
@@ -28,7 +28,7 @@ class ProfileMetadata(Base):
     __tablename__ = "profile_metadata"
     id = Column(Integer, primary_key=True, autoincrement=True)
     platform_number = Column(String(8), ForeignKey('float_metadata.platform_number'), nullable=False, index=True)
-    cycle_number = Column(Integer, index=True)
+    cycle_number = Column(Integer, nullable=False, index=True)
     direction = Column(String(1))
     juld = Column(DateTime, index=True) 
     juld_qc = Column(String(1))
@@ -43,35 +43,22 @@ class ProfileMetadata(Base):
     profile_temp_qc = Column(String(1))
     profile_psal_qc = Column(String(1))
     
+    # Composite unique constraint for profile identification
+    __table_args__ = (
+        UniqueConstraint('platform_number', 'cycle_number', name='uix_profile_platform_cycle'),
+    )
+    
     # Relationships
     float_metadata = relationship("FloatMetadata", back_populates="profiles")
-    measurements = relationship(
-        "Measurement", 
-        back_populates="profile",
-        foreign_keys="[Measurement.platform_number, Measurement.cycle_number]",
-        primaryjoin="and_(ProfileMetadata.platform_number == Measurement.platform_number, "
-                   "ProfileMetadata.cycle_number == Measurement.cycle_number)"
-    )
-    calibrations = relationship(
-        "Calibration", 
-        back_populates="profile",
-        foreign_keys="[Calibration.platform_number, Calibration.cycle_number]",
-        primaryjoin="and_(ProfileMetadata.platform_number == Calibration.platform_number, "
-                   "ProfileMetadata.cycle_number == Calibration.cycle_number)"
-    )
-    processing_history = relationship(
-        "ProcessingHistory", 
-        back_populates="profile",
-        foreign_keys="[ProcessingHistory.platform_number, ProcessingHistory.cycle_number]",
-        primaryjoin="and_(ProfileMetadata.platform_number == ProcessingHistory.platform_number, "
-                   "ProfileMetadata.cycle_number == ProcessingHistory.cycle_number)"
-    )
+    measurements = relationship("Measurement", back_populates="profile")
+    calibrations = relationship("Calibration", back_populates="profile")
+    processing_history = relationship("ProcessingHistory", back_populates="profile")
 
 class Measurement(Base):
     __tablename__ = "measurements"
     id = Column(Integer, primary_key=True, autoincrement=True)
     platform_number = Column(String(8), nullable=False, index=True)
-    cycle_number = Column(Integer, index=True)
+    cycle_number = Column(Integer, nullable=False, index=True)
     pres = Column(Float, index=True)
     pres_qc = Column(String(1))
     temp = Column(Float)
@@ -85,42 +72,44 @@ class Measurement(Base):
     psal_adjusted_qc = Column(String(1))
     psal_adjusted_error = Column(Float)
     
-    # Relationship
-    profile = relationship(
-        "ProfileMetadata", 
-        back_populates="measurements",
-        foreign_keys=[platform_number, cycle_number],
-        primaryjoin="and_(Measurement.platform_number == ProfileMetadata.platform_number, "
-                   "Measurement.cycle_number == ProfileMetadata.cycle_number)",
-        viewonly=True
+    # Foreign key to profile using the unique constraint
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['platform_number', 'cycle_number'], 
+            ['profile_metadata.platform_number', 'profile_metadata.cycle_number']
+        ),
     )
+    
+    # Relationship
+    profile = relationship("ProfileMetadata", back_populates="measurements")
 
 class Calibration(Base):
     __tablename__ = "calibrations"
     id = Column(Integer, primary_key=True, autoincrement=True)
     platform_number = Column(String(8), nullable=False, index=True)
-    cycle_number = Column(Integer, index=True)
+    cycle_number = Column(Integer, nullable=False, index=True)
     parameter = Column(String(16))
     scientific_calib_equation = Column(Text)
     scientific_calib_coefficient = Column(Text)
     scientific_calib_comment = Column(Text)
     scientific_calib_date = Column(DateTime)
     
-    # Relationship
-    profile = relationship(
-        "ProfileMetadata", 
-        back_populates="calibrations",
-        foreign_keys=[platform_number, cycle_number],
-        primaryjoin="and_(Calibration.platform_number == ProfileMetadata.platform_number, "
-                   "Calibration.cycle_number == ProfileMetadata.cycle_number)",
-        viewonly=True
+    # Foreign key to profile using the unique constraint
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['platform_number', 'cycle_number'], 
+            ['profile_metadata.platform_number', 'profile_metadata.cycle_number']
+        ),
     )
+    
+    # Relationship
+    profile = relationship("ProfileMetadata", back_populates="calibrations")
 
 class ProcessingHistory(Base):
     __tablename__ = "processing_history"
     id = Column(Integer, primary_key=True, autoincrement=True)
     platform_number = Column(String(8), nullable=False, index=True)
-    cycle_number = Column(Integer, index=True)
+    cycle_number = Column(Integer, nullable=False, index=True)
     history_institution = Column(String(4))
     history_step = Column(String(4))
     history_software = Column(String(4))
@@ -134,12 +123,13 @@ class ProcessingHistory(Base):
     history_previous_value = Column(Float)
     history_qctest = Column(String(16))
     
-    # Relationship
-    profile = relationship(
-        "ProfileMetadata", 
-        back_populates="processing_history",
-        foreign_keys=[platform_number, cycle_number],
-        primaryjoin="and_(ProcessingHistory.platform_number == ProfileMetadata.platform_number, "
-                   "ProcessingHistory.cycle_number == ProfileMetadata.cycle_number)",
-        viewonly=True
+    # Foreign key to profile using the unique constraint
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['platform_number', 'cycle_number'], 
+            ['profile_metadata.platform_number', 'profile_metadata.cycle_number']
+        ),
     )
+    
+    # Relationship
+    profile = relationship("ProfileMetadata", back_populates="processing_history")
