@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Send, Plus, Trash2, User, Bot, Loader2 } from "lucide-react";
+import { Send, Plus, Trash2, User, Bot, Loader2, MapPin, ExternalLink } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "@/store";
 import { addMessage, setSelectedMapData, setIsChatMapOpen, clearThoughts } from "@/slices/chatSlice";
@@ -175,12 +175,27 @@ const ChatInterface = () => {
                           <Analysis graphs={chat.graphs as any} />
                         )}
                         {Array.isArray(chat.maps) && chat.maps.length > 0 && (
-                          <div className="pt-1">
+                          <div className="pt-3 animate-in slide-in-from-bottom-2 duration-500">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+                              <span className="text-xs font-medium text-cyan-300/80 uppercase tracking-wide">
+                                Interactive Visualization Available
+                              </span>
+                            </div>
                             <button
-                              className="inline-flex items-center gap-2 rounded-md bg-slate-900 text-white px-3 py-1.5 text-sm hover:bg-slate-700"
-                              onClick={() => { dispatch(setSelectedMapData({ chatId: chat.id })); dispatch(setIsChatMapOpen(true)); }}
+                              className="group relative inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/30 text-cyan-100 px-4 py-2.5 text-sm font-medium hover:from-cyan-500/30 hover:to-blue-500/30 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 transform hover:scale-105 active:scale-95 backdrop-blur-sm"
+                              onClick={() => { 
+                                dispatch(setSelectedMapData({ chatId: chat.id })); 
+                                dispatch(setIsChatMapOpen(true)); 
+                              }}
                             >
-                              View map
+                              <div className="flex items-center gap-2 relative z-10">
+                                <MapPin className="w-4 h-4 text-cyan-400 group-hover:text-cyan-300 transition-colors group-hover:animate-pulse" />
+                                <span className="font-medium">View Interactive Map</span>
+                                <ExternalLink className="w-3 h-3 text-cyan-400/70 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all duration-200" />
+                              </div>
+                              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
                             </button>
                           </div>
                         )}

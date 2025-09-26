@@ -7,6 +7,7 @@ from flask_socketio import SocketIO, emit
 from flask import request
 import threading
 import time
+import random
 from typing import Dict, Any, Optional
 
 class SocketManager:
@@ -15,6 +16,20 @@ class SocketManager:
     def __init__(self, app=None):
         self.socketio = None
         self.connected_clients = {}  # Store client session info
+        
+        # Demo thoughts for analysis simulation
+        self.demo_thoughts = [
+            "I'm analyzing the query structure and intent to understand what data you're looking for. Let me identify the key parameters and determine the most appropriate analysis approach. I'll check our available data sources and prepare the optimal retrieval strategy for your request.",
+            
+            "Let me evaluate the query complexity and scope to set up the right analysis pipeline components. I'm validating the parameters and constraints while initializing the data processing workflows. I'll optimize the execution plan and cross-reference with our knowledge base to ensure accurate results.",
+            
+            "I'm preparing the visualization and reporting frameworks while validating data integrity and completeness. Let me set up real-time monitoring and progress tracking for this multi-step analysis execution. I'll ensure all components are properly configured for your specific query requirements.",
+            
+            "Analyzing the query structure to understand the data requirements and determine the best approach. I'm checking available data sources, preparing retrieval strategies, and evaluating complexity. Setting up analysis pipeline components and validating parameters for optimal execution.",
+            
+            "I'm identifying key data requirements and preparing the most appropriate analysis approach. Let me check data sources, prepare retrieval strategies, and set up the analysis pipeline. I'll validate parameters and initialize processing workflows for your query."
+        ]
+        
         if app:
             self.init_app(app)
     
@@ -92,6 +107,24 @@ class SocketManager:
         self.emit_to_client(session_id, 'query_type', {
             'type': query_type
         })
+        
+    
+    def send_demo_thoughts(self, session_id: str):
+        """Send one random demo thought to simulate AI analysis"""
+        def send_thought():
+            # Send one random thought with a short delay
+            time.sleep(random.uniform(0.5, 1.5))
+            
+            # Select one random thought
+            selected_thought = random.choice(self.demo_thoughts)
+            
+            # Send the thought
+            self.emit_thoughts_to_client(session_id, 'analysis', selected_thought)
+        
+        # Start sending thought in background thread
+        thread = threading.Thread(target=send_thought)
+        thread.daemon = True
+        thread.start()
     
     def emit_result_to_client(self, session_id: str, result: Dict[str, Any]):
         """Emit analysis completion to a specific client"""
@@ -126,6 +159,7 @@ class SocketManager:
             try:
                 # Run the analysis function with session_id for progress updates
                 self.emit_query_type_to_client(session_id, 'Analyzing query')
+                self.send_demo_thoughts(session_id)
                 result = analysis_func(query, session_id=session_id)
                 
                 # Emit completion
