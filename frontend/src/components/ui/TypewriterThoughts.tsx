@@ -31,7 +31,7 @@ const TypewriterThoughts: React.FC<TypewriterThoughtsProps> = ({ thoughts, isVis
         if (onContentChange) {
           onContentChange();
         }
-      }, 30); // 30ms delay between characters
+      }, 1); // 15ms delay between characters (faster animation)
 
       return () => clearTimeout(timer);
     } else if (animatedText && currentIndex >= animatedText.length && isAnimating) {

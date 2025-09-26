@@ -39,7 +39,7 @@ const ChatMap = () => {
 
   const globeReady = () => {
       if (globeRef.current) {
-        globeRef.current.controls().autoRotate = true;  //rotating
+        globeRef.current.controls().autoRotate = false;  //rotating
         globeRef.current.controls().enableZoom = false;
   
         globeRef.current.pointOfView({

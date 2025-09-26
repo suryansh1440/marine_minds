@@ -21,6 +21,62 @@ except ImportError:
     SOCKET_AVAILABLE = False
     socket_manager = None
 
+# Step callback functions for real-time agent progress updates
+def create_step_callback(session_id: str, agent_name: str):
+    """Create a step callback function for a specific agent and session"""
+    def step_callback(step_output):
+        if SOCKET_AVAILABLE and socket_manager and session_id:
+            # Extract meaningful information from the step output
+            step_info = str(step_output)
+            if hasattr(step_output, 'raw'):
+                step_info = str(step_output.raw)
+            
+            # Create a thought message based on the agent and step
+            thought_messages = {
+                'Router Agent': [
+                    "Analyzing query type and determining the best approach...",
+                    "Classifying the query to route to the appropriate specialist...",
+                    "Evaluating query complexity and requirements..."
+                ],
+                'Conversational Assistant': [
+                    "Processing your conversational query...",
+                    "Preparing a friendly response...",
+                    "Generating an appropriate reply..."
+                ],
+                'Data Retrieval Specialist': [
+                    "Connecting to the database to fetch your data...",
+                    "Executing database queries to retrieve relevant information...",
+                    "Processing and organizing the retrieved data...",
+                    "Validating data integrity and completeness..."
+                ],
+                'Data Analyst': [
+                    "Analyzing the retrieved data for insights...",
+                    "Processing data to identify patterns and trends...",
+                    "Preparing comprehensive analysis results...",
+                    "Generating visualizations and reports..."
+                ],
+                'Report Generator': [
+                    "Compiling analysis results into a comprehensive report...",
+                    "Formatting data for clear presentation...",
+                    "Finalizing the report with insights and recommendations..."
+                ]
+            }
+            
+            # Get a random thought for this agent
+            agent_thoughts = thought_messages.get(agent_name, [
+                f"{agent_name} is processing your request...",
+                f"Executing {agent_name} analysis step...",
+                f"{agent_name} is working on your query..."
+            ])
+            
+            import random
+            thought_message = random.choice(agent_thoughts)
+            
+            # Send the thought to the client
+            socket_manager.emit_thoughts_to_client(session_id, 'agent_step', thought_message)
+    
+    return step_callback
+
 
 # Configure LLM for Gemini
 llm = LLM(
@@ -187,6 +243,9 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         Dict matching FinalOutputModel schema.
     """
         # 1) First, run a tiny Router Crew to classify the query
+    # Create step callback for router agent
+    router_step_callback = create_step_callback(session_id, 'Router Agent') if session_id else None
+    
     router_agent = Agent(
         role="Router",
         goal="Classify the user's query.",
@@ -196,7 +255,8 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         ),
         verbose=True,
         llm=llm,
-        max_iter=1
+        max_iter=1,
+        step_callback=router_step_callback
     )
     route_task = Task(
         description=(
@@ -229,13 +289,17 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             print(f"Available tools from Stdio MCP server: {[tool.name for tool in tools]}")
         
         # convo agent and task
+        # Create step callback for conversation agent
+        convo_step_callback = create_step_callback(session_id, 'Conversational Assistant') if session_id else None
+        
         convo_agent = Agent(
             role="Conversational Assistant",
             goal="Respond to greetings or general chat tersely user query {query}.",
             backstory="You keep responses short and helpful. No tools.",
             verbose=True,
-        llm=llm,
-            max_iter=1
+            llm=llm,
+            max_iter=1,
+            step_callback=convo_step_callback
         )
         convo_task = Task(
             description=(
@@ -253,14 +317,18 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
 
 
         # Lookup-only agent (no heavy analysis)
+        # Create step callback for lookup agent
+        lookup_step_callback = create_step_callback(session_id, 'Data Retrieval Specialist') if session_id else None
+        
         lookup_data_retrieval = Agent(
             role="Database query Specialist",
             goal="Perform simple database lookups and brief aggregations; return concise values only.",
             backstory="You fetch small, targeted results fast. No graphs or maps unless explicitly asked.",
             verbose=True,
-        llm=llm,
-        max_iter=2
-    )
+            llm=llm,
+            max_iter=2,
+            step_callback=lookup_step_callback
+        )
         lookup_database_query = Task(
             description=(
                 "Perform a SIMPLE LOOKUP based on the user's request using MCP DB tools for user query {query}. "
@@ -276,6 +344,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         result_maker_lookup = Task(
             description=(
                     "Return ONLY FinalOutputModel with a concise report summarizing fetched values. "
+                    "make the report according to the query {query}"
                     "Rules (generic for any tabular result):\n"
                     "- Detect shape of the result.\n"
                     "  * Single column: title = column name or 'Results'; content: 'Found N items: v1, v2, v3, ...' (first 10).\n"
@@ -296,6 +365,9 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
 
 
         # Report-only agents and tasks (heavy analysis)
+        # Create step callback for data analyst agent
+        data_analyst_step_callback = create_step_callback(session_id, 'Data Analyst') if session_id else None
+        
         data_analyst = Agent(
             role="Data Analysis Agent",
             goal=(
@@ -308,11 +380,15 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             and then create compelling reports with meaningful graphs and map layers in the required schema.""",
             tools=[*tools],
             verbose=True,
-            llm=llm
+            llm=llm,
+            step_callback=data_analyst_step_callback
             # max_iter=1,  # Only 1 iteration to prevent loops
             # max_execution_time=30  # 30 second timeout
         )
 
+        # Create step callback for result agent
+        result_agent_step_callback = create_step_callback(session_id, 'Report Generator') if session_id else None
+        
         result_agent = Agent(
             role="Data Visualization and Report Creator",
             goal="""From the provided structured data, create the best possible report with high-quality graphs and maps,
@@ -320,7 +396,8 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             backstory="""You are a master at converting raw data into clear, insightful, and visually appealing reports.
                         You understand which chart and map types best represent the data to tell a compelling story.""",
             verbose=True,
-            llm=llm
+            llm=llm,
+            step_callback=result_agent_step_callback
             # max_iter=2,  # Limit iterations to prevent infinite loops
             # max_execution_time=30  # 30 second timeout
         )
