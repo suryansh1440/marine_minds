@@ -2,8 +2,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Send, Plus, Trash2, User, Bot, Loader2, MapPin, ExternalLink } from "lucide-react";
+import { Send, Plus, Trash2, User, Bot, Loader2, MapPin, ExternalLink, ArrowLeft } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import type { RootState } from "@/store";
 import { addMessage, setSelectedMapData, setIsChatMapOpen, clearThoughts } from "@/slices/chatSlice";
 import LightRays from "@/components/ui/LightRays";
@@ -17,6 +18,7 @@ const ChatInterface = () => {
   const thoughts = useSelector((state: RootState) => state.chat.thoughts);
   const queryType = useSelector((state: RootState) => state.chat.queryType);
   const isResult = useSelector((state: RootState) => state.chat.isResult);
+  const navigate = useNavigate();
 
   const [inputMessage, setInputMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -92,16 +94,16 @@ const ChatInterface = () => {
           fadeDistance={1.2}
         />
       </div>
-
       <div className="relative z-20 flex h-full bg-transparent">
         {/* Sidebar */}
         <div className="w-80 bg-black/20 backdrop-blur-lg border-r border-cyan-500/20 flex flex-col">
           <div className="p-6 border-b border-cyan-500/20">
             <button
-              className="w-full flex items-center justify-center gap-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 rounded-xl px-4 py-3 text-cyan-300 transition-all duration-300 hover:scale-105"
+              onClick={() => navigate('/')}
+              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-xl px-4 py-3 text-white transition-all duration-300 hover:scale-105"
             >
-              <Plus className="w-5 h-5" />
-              New Chat
+              <ArrowLeft className="w-5 h-5" />
+              Back to Home
             </button>
           </div>
 
