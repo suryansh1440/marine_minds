@@ -6,7 +6,7 @@ from netcdf_processor import process_netcdf
 from models import FloatMetadata, ProfileMetadata
 from sqlalchemy.orm import sessionmaker
 from config import engine
-from sqlalchemy import desc
+from sqlalchemy import desc, func  # Added func import
 import os
 from datetime import datetime
 from werkzeug.utils import secure_filename
@@ -14,15 +14,9 @@ import traceback
 
 app = Flask(__name__)
 SessionLocal = sessionmaker(bind=engine)
-CORS(app, resources={r"/api/*": {"origins": [
-    "http://localhost:5173", 
-    "http://127.0.0.1:5173",
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "*"
-]}}, supports_credentials=True)
+
+# Simplified CORS configuration
+CORS(app)  # This allows all origins for development
 
 # Initialize Socket.IO
 socket_manager.init_app(app)
@@ -37,7 +31,7 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.post("/api/ask")
+@app.route("/api/ask", methods=['POST'])
 def analyze_with_crewai():
     data = request.get_json(silent=True) or {}
     query = data.get("query")
@@ -81,7 +75,6 @@ def upload_netcdf():
             file.save(file_location)
             
             # Process the NetCDF file
-            # Make sure process_netcdf is compatible with Flask
             process_netcdf(file_location)
             
             return jsonify({
@@ -105,7 +98,6 @@ def upload_netcdf():
                 os.remove(file_location)
             except Exception as e:
                 app.logger.error(f"Error cleaning up file: {str(e)}")
-
 
 @app.route('/api/argo-positions')
 def get_argo_positions():
@@ -155,5 +147,16 @@ def get_argo_positions():
     finally:
         session.close()
 
+# Add a simple test endpoint to check if server is running
+@app.route('/')
+def hello():
+    return jsonify({"message": "Flask server is running!", "status": "OK"})
+
+@app.route('/health')
+def health_check():
+    return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
+
 if __name__ == "__main__":
-    socket_manager.run_app(app, host="0.0.0.0", port=9000, debug=False)
+    print("Starting Flask server on http://localhost:9000")
+    print("Test the server by visiting: http://localhost:9000/health")
+    socket_manager.run_app(app, host="0.0.0.0", port=9000, debug=True)

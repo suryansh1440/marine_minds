@@ -27,45 +27,61 @@ const Admin = () => {
   }
 
   const uploadFileToBackend = async (file: File) => {
-    setIsUploading(true)
-    setUploadStatus(null)
+  setIsUploading(true)
+  setUploadStatus(null)
+  
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
     
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      
-      const response = await fetch('http://localhost:9000/upload-netcdf/', {
-        method: 'POST',
-        body: formData,
+    const response = await fetch('http://localhost:9000/upload-netcdf/', {
+      method: 'POST',
+      body: formData,
+    })
+    
+    if (!response.ok) {
+      // Get more detailed error information
+      let errorMessage = `Upload failed with status: ${response.status}`
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.error || errorMessage
+      } catch (e) {
+        errorMessage = await response.text() || errorMessage
+      }
+      throw new Error(errorMessage)
+    }
+    
+    const result = await response.json()
+    setUploadStatus({ message: result.message || 'ARGO file uploaded successfully!', success: true })
+    
+    // Add to recent files
+    const newFile = {
+      id: recentFiles.length + 1,
+      name: file.name,
+      type: "profile",
+      size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+      date: "Just now"
+    }
+    setRecentFiles([newFile, ...recentFiles])
+    
+  } catch (error) {
+    console.error('Upload error:', error)
+    // Check if it's a network error
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      setUploadStatus({ 
+        message: 'Cannot connect to server. Make sure the backend is running on port 9000.', 
+        success: false 
       })
-      
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`)
-      }
-      
-      const result = await response.json()
-      setUploadStatus({ message: result.message || 'ARGO file uploaded successfully!', success: true })
-      
-      // Add to recent files
-      const newFile = {
-        id: recentFiles.length + 1,
-        name: file.name,
-        type: "profile", // Default type for new uploads
-        size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-        date: "Just now"
-      }
-      setRecentFiles([newFile, ...recentFiles])
-      
-    } catch (error) {
-      console.error('Upload error:', error)
+    } else {
       setUploadStatus({ 
         message: error instanceof Error ? error.message : 'Failed to upload ARGO file', 
         success: false 
       })
-    } finally {
-      setIsUploading(false)
     }
+  } finally {
+    setIsUploading(false)
   }
+}
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
