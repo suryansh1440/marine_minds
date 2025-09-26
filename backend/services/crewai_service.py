@@ -302,7 +302,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             goal="Respond to greetings or general chat tersely user query {query}.",
             backstory="You keep responses short and helpful. No tools.",
             verbose=True,
-            llm=llm,
+        llm=llm,
 
             max_iter=1,
             step_callback=convo_step_callback
@@ -310,8 +310,8 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         )
         convo_task = Task(
             description=(
-                "Produce FinalOutputModel: a brief friendly reply in report.content for user query {query}. "
-                "Set graphs=[] and maps=[]. Keep report.title='Assistant'."
+                    "Produce FinalOutputModel: a brief friendly reply in report.content for user query {query}. "
+                    "Set graphs=[] and maps=[]. Keep report.title='Assistant'."
             ),
             agent=convo_agent,
             output_json=FinalOutputModel,
@@ -328,12 +328,12 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             goal="Perform simple database lookups and brief aggregations; return concise values only.",
             backstory="You fetch small, targeted results fast. No graphs or maps unless explicitly asked.",
             verbose=True,
-            llm=llm,
+        llm=llm,
 
             max_iter=2,
             step_callback=lookup_step_callback
 
-        )
+    )
         lookup_database_query = Task(
             description=(
                 "Perform a SIMPLE LOOKUP based on the user's request using MCP DB tools for user query {query}. "
@@ -382,7 +382,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             backstory="""You are a data scientist who can interpret the user's intent, decide what to query,
             use available tools to fetch exactly what's needed, aggregate by cycle/station/month as appropriate,
             and then create compelling reports with meaningful graphs and map layers in the required schema.""",
-            tools=[*tools],
+        tools=[*tools],
             verbose=True,
 
             llm=llm,
@@ -394,7 +394,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
 
         # Create step callback for result agent
         result_agent_step_callback = create_step_callback(session_id, 'Report Generator') if session_id else None
-        
+
         result_agent = Agent(
             role="Data Visualization and Report Creator",
             goal="""From the provided structured data, create the best possible report with high-quality graphs and maps,
@@ -471,10 +471,10 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         )
         report_crew = Crew(
             agents=[data_analyst, result_agent],
-            tasks=[
+        tasks=[
                 analysis_and_fetch,
-                result_maker
-            ],
+            result_maker
+        ],
             process="sequential",
             verbose=True
         )
@@ -497,8 +497,8 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
                     parsed_router = parse_llm_output(raw_text)
                 except Exception:
                     parsed_router = safe_parse_llm_output(raw_text)
-                if isinstance(parsed_router, dict) and parsed_router.get('route') in ["CONVERSATION","LOOKUP","REPORT"]:
-                    route = parsed_router['route']
+            if isinstance(parsed_router, dict) and parsed_router.get('route') in ["CONVERSATION","LOOKUP","REPORT"]:
+                route = parsed_router['route']
         except Exception as e:
             print(f"Error parsing router output: {e}, falling back to LOOKUP")
             pass
@@ -547,8 +547,8 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             parsed = parse_llm_output(raw_result_text)
         except Exception:
             parsed = safe_parse_llm_output(raw_result_text)
-        if parsed:
-            return parsed
+            if parsed:
+                return parsed
         return {"result": str(raw_result_text)}
 
 if __name__ == "__main__":

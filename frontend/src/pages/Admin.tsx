@@ -1,8 +1,10 @@
 import { DarkVeilBackground } from "@/components/ui/shadcn-io/dark-veil-background"
-import { Upload, FileText, Database, Navigation, Waves, Thermometer, Clock, Trash2, MapPin, Droplets, Gauge } from "lucide-react"
+import { Upload, FileText, Database, Navigation, Waves, Thermometer, Clock, Trash2, MapPin, Droplets, Gauge, ArrowLeft } from "lucide-react"
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 const Admin = () => {
+  const navigate = useNavigate()
   const [recentFiles, setRecentFiles] = useState([
     { id: 1, name: "argo-profile-1234.nc", type: "profile", size: "2.4 MB", date: "2 hours ago" },
     { id: 2, name: "temperature-data.nc", type: "temperature", size: "1.8 MB", date: "5 hours ago" },
@@ -120,10 +122,19 @@ const Admin = () => {
       <div className="relative z-10 flex min-h-screen">
         {/* Sidebar */}
         <div className="w-80 bg-black/70 backdrop-blur-md border-r border-gray-800 p-6 overflow-y-auto">
-          <h2 className="text-xl font-bold text-white mb-6 flex items-center">
-            <Clock className="mr-2 h-5 w-5" />
-            Recent ARGO Files
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-white flex items-center">
+              <Clock className="mr-2 h-5 w-5" />
+              Recent ARGO Files
+            </h2>
+            <button
+              onClick={() => navigate('/')}
+              className="inline-flex items-center gap-2 rounded-lg bg-white/10 border border-white/20 text-white px-2.5 py-1.5 text-xs hover:bg-white/15 hover:border-white/30 transition-colors whitespace-nowrap"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Home
+            </button>
+          </div>
           
           <div className="space-y-4">
             {recentFiles.map((file) => (
