@@ -438,7 +438,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
                 "- maps: create a maximum of 1 map. If the data includes temperature, use a 'heatmap'. For general location data, use a 'labels' map.\n"
                 "  **For a 'hexbin' map, think of it as bars coming upward from the map, where the height of the bar represents a value like density or count.**\n"
                 "  The map type should be chosen to best represent the spatial data (e.g., 'heatmap' for density, 'labels' for specific points).\n"
-                "  **CRITICAL: Each map's 'data' array must contain actual coordinate and weight data, not empty objects.**\n"
+                "  **CRITICAL: Each map's 'data' array must contain actual coordinate and weight data, not empty objects. In hex bin weight should range from 10 to 30 only.**\n"
                 "No extra keys; numbers must be numeric. Ensure all keys (`xKey`, `yKey`, `lat`, `lng`, etc.) are correctly mapped from the data.\n"
                 "**MOST IMPORTANT: Fill the 'data' arrays with actual values from the context, not empty objects {}.**"
             ),
