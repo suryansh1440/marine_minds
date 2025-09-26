@@ -1,10 +1,12 @@
 "use client";
 import React from 'react';
-
+import { useNavigate } from "react-router-dom";
 const TrySection: React.FC = () => {
+  const navigate = useNavigate();
   const handleTryDemo = () => {
     // Add your demo click handler here
     console.log('Try Demo clicked');
+    navigate('/chat');
   };
 
   return (
@@ -33,7 +35,7 @@ const TrySection: React.FC = () => {
         <div className="flex-1 flex justify-center items-center">
           <div className="relative">
             {/* MacBook Frame */}
-            <div className="relative w-[600px] h-[400px]">
+            <div className="relative w-[600px] h-[300px]">
               {/* MacBook top bar */}
               <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-gray-900 rounded-t-lg flex items-center justify-center">
                 <div className="w-3 h-3 bg-gray-700 rounded-full"></div>
@@ -45,6 +47,7 @@ const TrySection: React.FC = () => {
                 <div className="w-full h-full bg-gradient-to-br from-blue-900 via-purple-900 to-gray-900 rounded overflow-hidden">
                   {/* Chatbot interface mockup */}
                   <div className="h-full flex flex-col">
+                    <img src="/chat.jpg" alt="" className='w-full h-full object-cover' />
                   </div>
                 </div>
               </div>

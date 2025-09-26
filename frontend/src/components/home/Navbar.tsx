@@ -5,7 +5,12 @@ const Navbar: React.FC = () => {
   const [activeLink, setActiveLink] = useState('Home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const navLinks = ['Home', 'Ocean Data', 'Technology', 'Research'];
+  const navLinks = [
+    { name: 'Home', path: '/' },
+    { name: 'Admin', path: '/admin' },
+    { name: 'Visualize Map', path: '/visualize-map' },
+    { name: 'Research', path: '/research' }
+  ];
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -21,24 +26,26 @@ const Navbar: React.FC = () => {
     };
   }, [isMenuOpen]);
 
+  // Helper function to get path for a link
+  const getLinkPath = (linkName: string) => {
+    const link = navLinks.find(item => item.name === linkName);
+    return link ? link.path : `/${linkName.toLowerCase().replace(' ', '-')}`;
+  };
+
   return (
     <nav className="fixed top-2.5 left-1/2 flex w-full max-w-7xl -translate-x-1/2 items-center justify-between px-6 py-1.5 pr-4 md:top-4 z-50">
       {/* Logo */}
-      <Link 
-        className="hidden size-8 p-1 drop-shadow-xl delay-200 md:size-9 lg:block" 
-        aria-label="Homepage" 
+      <Link
+        className="hidden md:block lg:block relative w-16 h-16 md:w-20 md:h-20 lg:w-16 lg:h-16 drop-shadow-xl delay-200"
+        aria-label="Homepage"
         to="/"
-        onClick={(e) => {
-          e.preventDefault();
-          setActiveLink('Home');
-        }}
+        onClick={() => setActiveLink('Home')}
       >
-<svg className="size-[35px]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 5350 5350">
-  <path 
-    className="fill-white dark:fill-black" 
-    d="M2675 1345c-720 0-1305 585-1305 1305s585 1305 1305 1305 1305-585 1305-1305-585-1305-1305-1305zm-655 1730c-90 0-165-75-165-165s75-165 165-165 165 75 165 165-75 165-165 165zm655 0c-90 0-165-75-165-165s75-165 165-165 165 75 165 165-75 165-165 165zm655 0c-90 0-165-75-165-165s75-165 165-165 165 75 165 165-75 165-165 165z"
-  />
-</svg>
+        <img
+          src="/logo.png"
+          alt="Logo"
+          className="w-full h-full object-contain"
+        />
       </Link>
 
       {/* Navigation Links */}
@@ -46,22 +53,18 @@ const Navbar: React.FC = () => {
         <ul className="relative flex min-h-14 items-center justify-center rounded-[22px] border border-black/10 bg-black/30 px-1 py-1 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-white/10">
           <div className="flex items-center" style={{ opacity: 1, filter: 'blur(0px)' }}>
             {navLinks.map((link) => (
-              <li key={link} className="relative list-none">
+              <li key={link.name} className="relative list-none">
                 <Link
-                  className={`block px-4 py-1.5 text-sm font-light transition ${
-                    activeLink === link 
-                      ? 'text-white' 
+                  className={`block px-4 py-1.5 text-sm font-light transition ${activeLink === link.name
+                      ? 'text-white'
                       : 'text-white/70 hover:text-white dark:text-white/70'
-                  }`}
-                  to={`/${link.toLowerCase() === 'home' ? '' : link.toLowerCase()}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveLink(link);
-                  }}
+                    }`}
+                  to={link.path}
+                  onClick={() => setActiveLink(link.name)}
                 >
-                  {link}
+                  {link.name}
                 </Link>
-                {activeLink === link && (
+                {activeLink === link.name && (
                   <span className="absolute inset-0 -z-10 w-full rounded-full bg-black/15 dark:bg-white/10">
                     <div className="bg-primary absolute -top-[9px] left-1/2 h-1 w-8 -translate-x-1/2 rounded-t-full">
                       <div className="bg-primary/20 absolute -top-2 -left-2 h-6 w-12 rounded-full blur-md"></div>
@@ -72,7 +75,7 @@ const Navbar: React.FC = () => {
                 )}
               </li>
             ))}
-            
+
             {/* Book a Call Button */}
             <li className="ml-1 list-none">
               <button
@@ -98,47 +101,44 @@ const Navbar: React.FC = () => {
           aria-label="Toggle menu"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
-          <svg 
-            className="pointer-events-none md:hidden size-6" 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
+          <svg
+            className="pointer-events-none md:hidden size-6"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path 
-              d="M4 12L20 12" 
-              className={`origin-center -translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] ${
-                isMenuOpen ? 'translate-x-0 translate-y-0 rotate-[315deg]' : ''
-              }`}
+            <path
+              d="M4 12L20 12"
+              className={`origin-center -translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] ${isMenuOpen ? 'translate-x-0 translate-y-0 rotate-[315deg]' : ''
+                }`}
             />
-            <path 
-              d="M4 12H20" 
-              className={`origin-center transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.8)] ${
-                isMenuOpen ? 'rotate-45' : ''
-              }`}
+            <path
+              d="M4 12H20"
+              className={`origin-center transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.8)] ${isMenuOpen ? 'rotate-45' : ''
+                }`}
             />
-            <path 
-              d="M4 12H20" 
-              className={`origin-center translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] ${
-                isMenuOpen ? 'translate-y-0 rotate-[135deg]' : ''
-              }`}
+            <path
+              d="M4 12H20"
+              className={`origin-center translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] ${isMenuOpen ? 'translate-y-0 rotate-[135deg]' : ''
+                }`}
             />
           </svg>
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="24" 
-            height="24" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            className="lucide lucide-command mx-0 hidden size-5 md:block" 
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="lucide lucide-command mx-0 hidden size-5 md:block"
             aria-hidden="true"
           >
             <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"></path>
@@ -151,20 +151,18 @@ const Navbar: React.FC = () => {
         <div className="absolute top-full right-0 mt-2 w-48 rounded-md bg-black/80 backdrop-blur-xl shadow-lg border border-white/10 py-2">
           {navLinks.map((link) => (
             <Link
-              key={link}
-              className={`block px-4 py-2 text-sm font-light transition ${
-                activeLink === link 
-                  ? 'text-white bg-white/10' 
+              key={link.name}
+              className={`block px-4 py-2 text-sm font-light transition ${activeLink === link.name
+                  ? 'text-white bg-white/10'
                   : 'text-white/70 hover:text-white hover:bg-white/5'
-              }`}
-              to={`/${link.toLowerCase() === 'home' ? '' : link.toLowerCase()}`}
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveLink(link);
+                }`}
+              to={link.path}
+              onClick={() => {
+                setActiveLink(link.name);
                 setIsMenuOpen(false);
               }}
             >
-              {link}
+              {link.name}
             </Link>
           ))}
           <div className="border-t border-white/10 my-2"></div>

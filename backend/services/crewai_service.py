@@ -28,11 +28,6 @@ llm = LLM(
     temperature=0.1,
     api_key="sk-e226bae36f4d43a2aa3c86d9fce835d8"
 )
-# llm = LLM(
-#     model="gemini/gemini-2.0-flash",
-#     temperature=0.1,
-#     api_key=os.getenv("GEMINI_API_KEY")  # Use the correct environment variable
-# )
 
 def parse_llm_output(output_string: Any) -> Dict[str, Any]:
     """Extract and parse JSON from an LLM output that may include code fences, prefixes, and pipes."""
@@ -135,16 +130,22 @@ class FinalOutputModel(BaseModel):
 class RouterOutput(BaseModel):
     route: Literal["CONVERSATION", "LOOKUP", "REPORT"]
 
+# Detect operating system and set the correct Python path
+def get_python_executable_path():
+    """Get the correct Python executable path based on the operating system."""
+    if os.name == 'nt':  # Windows
+        return ".venv/Scripts/python.exe"
+    else:  # macOS/Linux
+        return ".venv/bin/python"
 
-# Removed JSON report generator tool per requirements
+# Get the correct Python path for the current OS
+python_executable = get_python_executable_path()
 
 server_params = StdioServerParameters(
-    command=".venv/Scripts/python.exe", 
+    command=python_executable,  # Use OS-specific path
     args=["mcpServers/supabaseserver.py"],
     env={"UV_PYTHON": "3.12", **os.environ},
-    
 )
-
 
 def create_callback_function_convo(session_id: str):
     """Create callback function for conversation tasks"""
@@ -182,11 +183,12 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
     Parameters:
         query: Natural language request from the user.
         verbose: If True, prints progress messages.
+        session_id: Session ID for socket communication.
 
     Returns:
         Dict matching FinalOutputModel schema.
     """
-        # 1) First, run a tiny Router Crew to classify the query
+    # 1) First, run a tiny Router Crew to classify the query
     router_agent = Agent(
         role="Router",
         goal="Classify the user's query.",
@@ -223,6 +225,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
         max_execution_time=30,
         verbose=True
     )
+    
     # 2) Run the appropriate specialized crew
     with MCPServerAdapter(server_params) as tools:
         if verbose:
@@ -234,23 +237,19 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             goal="Respond to greetings or general chat tersely user query {query}.",
             backstory="You keep responses short and helpful. No tools.",
             verbose=True,
-        llm=llm,
+            llm=llm,
             max_iter=1
         )
         convo_task = Task(
             description=(
-                    "Produce FinalOutputModel: a brief friendly reply in report.content for user query {query}. "
-                    "Set graphs=[] and maps=[]. Keep report.title='Assistant'."
+                "Produce FinalOutputModel: a brief friendly reply in report.content for user query {query}. "
+                "Set graphs=[] and maps=[]. Keep report.title='Assistant'."
             ),
             agent=convo_agent,
             output_json=FinalOutputModel,
             expected_output="A single JSON object with minimal reply",
-            callback=create_callback_function_convo(session_id)
+            callback=create_callback_function_convo(session_id) if session_id else None
         )
-
-
-
-
 
         # Lookup-only agent (no heavy analysis)
         lookup_data_retrieval = Agent(
@@ -258,42 +257,39 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             goal="Perform simple database lookups and brief aggregations; return concise values only.",
             backstory="You fetch small, targeted results fast. No graphs or maps unless explicitly asked.",
             verbose=True,
-        llm=llm,
-        max_iter=2
-    )
+            llm=llm,
+            max_iter=2
+        )
         lookup_database_query = Task(
             description=(
                 "Perform a SIMPLE LOOKUP based on the user's request using MCP DB tools for user query {query}. "
                 "Prefer small aggregates such as COUNT(*), MIN/MAX, AVG by cycle if relevant. "
                 "Return only a tiny result table with clear field names. Do not include graphs or maps."
-                "first get the database schema then excute query"
+                "first get the database schema then execute query"
             ),
             agent=lookup_data_retrieval,
             expected_output="Small structured dataset with the requested lookup values.",
             tools=[*tools],
-            callback=create_callback_function_lookup(session_id)
+            callback=create_callback_function_lookup(session_id) if session_id else None
         )
         result_maker_lookup = Task(
             description=(
-                    "Return ONLY FinalOutputModel with a concise report summarizing fetched values. "
-                    "Rules (generic for any tabular result):\n"
-                    "- Detect shape of the result.\n"
-                    "  * Single column: title = column name or 'Results'; content: 'Found N items: v1, v2, v3, ...' (first 10).\n"
-                    "  * Two columns: title = '<col1> and <col2> Summary'; content: 'Rows: N. Sample: v11:v12, v21:v22, ...' (first 10 pairs).\n"
-                    "  * 3+ columns: title = 'Query Results'; content: 'Rows: N, Columns: M (c1, c2, ...). Sample: row1[c1=v, c2=v, ...]; row2[...]' (first 5 rows, compact).\n"
-                    "- If a known semantic fits (e.g., tables list), you may adapt title wording (e.g., 'Database Tables').\n"
-                    "- Always keep content plain text (no markdown, no code fences).\n"
-                    "- Unless explicitly requested, set graphs=[] and maps=[]."
+                "Return ONLY FinalOutputModel with a concise report summarizing fetched values. "
+                "Rules (generic for any tabular result):\n"
+                "- Detect shape of the result.\n"
+                "  * Single column: title = column name or 'Results'; content: 'Found N items: v1, v2, v3, ...' (first 10).\n"
+                "  * Two columns: title = '<col1> and <col2> Summary'; content: 'Rows: N. Sample: v11:v12, v21:v22, ...' (first 10 pairs).\n"
+                "  * 3+ columns: title = 'Query Results'; content: 'Rows: N, Columns: M (c1, c2, ...). Sample: row1[c1=v, c2=v, ...]; row2[...]' (first 5 rows, compact).\n"
+                "- If a known semantic fits (e.g., tables list), you may adapt title wording (e.g., 'Database Tables').\n"
+                "- Always keep content plain text (no markdown, no code fences).\n"
+                "- Unless explicitly requested, set graphs=[] and maps=[]."
             ),
             agent=lookup_data_retrieval,
             context=[lookup_database_query],
             output_json=FinalOutputModel,
             expected_output="JSON with report filled with 2-3 sentences, graphs and maps likely empty",
-            callback=create_callback_function_lookup(session_id)
+            callback=create_callback_function_lookup(session_id) if session_id else None
         )
-
-
-
 
         # Report-only agents and tasks (heavy analysis)
         data_analyst = Agent(
@@ -309,8 +305,6 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             tools=[*tools],
             verbose=True,
             llm=llm
-            # max_iter=1,  # Only 1 iteration to prevent loops
-            # max_execution_time=30  # 30 second timeout
         )
 
         result_agent = Agent(
@@ -321,10 +315,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
                         You understand which chart and map types best represent the data to tell a compelling story.""",
             verbose=True,
             llm=llm
-            # max_iter=2,  # Limit iterations to prevent infinite loops
-            # max_execution_time=30  # 30 second timeout
         )
-
 
         # Single task where data_analyst interprets the query and fetches data
         analysis_and_fetch = Task(
@@ -338,15 +329,13 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             agent=data_analyst,
             tools=[*tools],
             expected_output="Structured findings and tabular aggregates ready to render",
-            callback=create_callback_function_report(session_id)
+            callback=create_callback_function_report(session_id) if session_id else None
         )
-
-
 
         result_maker = Task(
             description=(
                 "Generate ONLY the final JSON strictly matching FinalOutputModel. Use the context data to build:\n"
-                "Build the report ,map and graphs beased on this query - {query}"
+                "Build the report ,map and graphs based on this query - {query}"
                 "- report.title and report.content (clear, non-generic and insightful).\n"
                 "- graphs: create a maximum of 1 graph relevant to the data. Choose from types like 'bar', 'line', 'scatter', 'area', or 'pie'.\n"
                 "  Graph data sampling rules: Ensure the 'data' array has between 5 and 20 points. If more than 20 points, uniformly sample down to exactly 20. If fewer than 5 points, omit the graph entirely.\n"
@@ -364,7 +353,7 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             context=[analysis_and_fetch],
             output_json=FinalOutputModel,
             expected_output="A single JSON object formatted as per FinalOutputModel with a high-quality narrative, graphs, and maps according to this query : {query}",
-            callback=create_callback_function_report(session_id)
+            callback=create_callback_function_report(session_id) if session_id else None
         )
 
         # crews for each route
@@ -388,24 +377,21 @@ def run_crewai_pipeline(query: str, verbose: bool = True, session_id: str = None
             verbose=True
         )
         report_crew = Crew(
-            agents=[data_analyst,result_agent],
+            agents=[data_analyst, result_agent],
             tasks=[
                 analysis_and_fetch,
                 result_maker
             ],
             process="sequential",
-            # max_iter=1,  # Only 1 iteration to prevent loops
-            # max_execution_time=60,  # 60 second timeout
             verbose=True
         )
-
-
-
 
         input_data = {"query": query}
         if SOCKET_AVAILABLE and socket_manager and session_id:
             socket_manager.emit_query_type_to_client(session_id, 'Classifying query')
+        
         router_raw = router_crew.kickoff(input_data)
+        
         # Robustly parse router output
         route = 'LOOKUP'
         try:

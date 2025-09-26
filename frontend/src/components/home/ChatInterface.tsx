@@ -126,8 +126,8 @@ const ChatInterface = () => {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col bg-transparent">
           {/* Chat Header */}
-          <div className="border-b border-cyan-500/20 p-6 bg-black/10 backdrop-blur-sm">
-            <h1 className="text-2xl font-bold text-white">FloatChat</h1>
+          <div className="border-b border-cyan-500/20 px-6 py-2 bg-black/10 backdrop-blur-sm">
+            <h1 className="text-xl font-bold text-white">FloatChat</h1>
             <p className="text-cyan-300/80 text-sm">AI-Powered Oceanographic Data Assistant</p>
           </div>
 
@@ -223,9 +223,9 @@ const ChatInterface = () => {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-cyan-500/20 p-6 bg-black/10 backdrop-blur-sm">
+          <div className="border-t border-cyan-500/20 px-6 py-2 bg-black/10 backdrop-blur-sm">
             <div className="max-w-4xl mx-auto">
-              <div className="relative group">
+              <div className="relative group flex items-center justify-between">
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
@@ -246,7 +246,7 @@ const ChatInterface = () => {
                 <button
                   onClick={handleSendMessage}
                   disabled={!inputMessage.trim()}
-                  className="absolute bottom-3 right-3 p-2 bg-cyan-500/10 border border-cyan-400/30 rounded-full 
+                  className="absolute bottom-6 right-3 p-2 bg-cyan-500/10 border border-cyan-400/30 rounded-full 
                            hover:bg-cyan-400/20 hover:border-cyan-400/50 transition-all duration-300
                            disabled:opacity-30 disabled:cursor-not-allowed
                            shadow-lg shadow-cyan-400/20 hover:shadow-cyan-400/40"
